@@ -46,9 +46,9 @@ interface IAVS {
     }
 
     /**
-     * @notice Returns the currrent list of operator registered as AVS.
+     * @notice Returns the currrent address of operator registered as AVS.
      */
-    function operators() external view returns (Operator[] memory);
+    function operators() external view returns (address[] memory);
 
     /**
      * @notice Returns the current strategy parameters.
@@ -61,10 +61,10 @@ interface IAVS {
      *                          Pubkey must match operator's address (msg.sender)
      * @param operatorSignature The signature, salt, and expiry of the operator's signature.
      */
-    function registerOperator(
-        bytes calldata pubkey,
-        ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature
-    ) external;
+    // function registerOperator(
+    //     bytes calldata pubkey,
+    //     ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature
+    // ) external;
 
     /**
      * @notice Check if an operator can register to the AVS.
