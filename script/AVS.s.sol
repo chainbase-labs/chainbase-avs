@@ -8,13 +8,14 @@ import {IAVSDirectory} from "@eigenlayer/contracts/interfaces/IAVSDirectory.sol"
 
 contract DeployAVS is Script {
     function run() external {
-        // https://github.com/Layr-Labs/eigenlayer-contracts holesky 
+        // https://github.com/Layr-Labs/eigenlayer-contracts holesky
         address delegationManagerAddress = vm.envAddress("DELEGATION_MANAGER_ADDRESS");
         address avsDirectoryAddress = vm.envAddress("AVS_DIRECTORY_ADDRESS");
+        string memory metadataURI = vm.envString("METADATA_URI");
 
         vm.startBroadcast();
 
-        AVS avs = new AVS(IDelegationManager(delegationManagerAddress), IAVSDirectory(avsDirectoryAddress));
+        AVS avs = new AVS(IDelegationManager(delegationManagerAddress), IAVSDirectory(avsDirectoryAddress), metadataURI);
 
         vm.stopBroadcast();
 

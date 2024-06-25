@@ -13,9 +13,13 @@ contract AVS is IAVS, AVSStorage {
     /// @notice EigenLayer core AVSDirectory
     IAVSDirectory internal immutable _avsDirectory;
 
-    constructor(IDelegationManager delegationManager, IAVSDirectory avsDirectory) {
+    constructor(IDelegationManager delegationManager, IAVSDirectory avsDirectory, string memory metadataURI_) {
         _delegationManager = delegationManager;
         _avsDirectory = avsDirectory;
+
+        if (bytes(metadataURI_).length > 0) {
+            _avsDirectory.updateAVSMetadataURI(metadataURI_);
+        }
     }
 
     /// view function
