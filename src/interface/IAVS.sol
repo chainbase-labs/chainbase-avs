@@ -57,14 +57,9 @@ interface IAVS {
 
     /**
      * @notice Register an operator with the AVS. Forwards call to EigenLayer' AVSDirectory.
-     * @param pubkey            64 byte uncompressed secp256k1 public key (no 0x04 prefix)
-     *                          Pubkey must match operator's address (msg.sender)
      * @param operatorSignature The signature, salt, and expiry of the operator's signature.
      */
-    // function registerOperator(
-    //     bytes calldata pubkey,
-    //     ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature
-    // ) external;
+    function registerOperator(ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature) external;
 
     /**
      * @notice Check if an operator can register to the AVS.

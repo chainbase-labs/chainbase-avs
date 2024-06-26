@@ -22,7 +22,8 @@ contract AVS is IAVS, AVSStorage {
         }
     }
 
-    /// view function
+    /// ************ view function ************ ///
+    /// ****************************************** ///
 
     function operators() external view returns (address[] memory) {
         return _operators;
@@ -42,5 +43,13 @@ contract AVS is IAVS, AVSStorage {
 
     function canRegister(address operator) external view returns (bool, string memory) {
         return (true, "");
+    }
+
+    /// ************ external function ************ ///
+    /// ****************************************** ///
+    function registerOperator(ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature) external {
+        address operator = msg.sender;
+        _avsDirectory.registerOperatorToAVS(operator, operatorSignature);
+        emit OperatorAdded(operator);
     }
 }
