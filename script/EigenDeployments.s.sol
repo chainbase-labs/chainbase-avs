@@ -1,4 +1,5 @@
-pragma solidity = 0.8.12;
+// SPDX-License-Identifier: GPL-3.0-only
+pragma solidity ^0.8.12;
 
 //https://github.com/Layr-Labs/eigenlayer-contracts?tab=readme-ov-file#current-mainnet-deployment
 library EigenMainnetDeployments {

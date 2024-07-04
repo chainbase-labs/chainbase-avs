@@ -1,11 +1,11 @@
 pragma solidity ^0.8.12;
 
-import {Istragegy} from "@eigenlayer/contracts/interfaces/IStrategy.sol";
+import {IStrategy} from "@eigenlayer/contracts/interfaces/IStrategy.sol";
 import {IAVS} from "../src/interface/IAVS.sol";
 import {EigenMainnetDeployments, EigenHoleSkyDeployments} from "./EigenDeployments.s.sol";
 
 library StrategyParams {
-    uint96 public constant STD_MUTIPLIER = 1e18;
+    uint96 public constant STD_MULTIPLIER = 1e18;
 
     function holesky() internal pure returns (IAVS.StrategyParam[] memory params) {
         params = new IAVS.StrategyParam[](5);
