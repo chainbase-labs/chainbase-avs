@@ -6,11 +6,14 @@ abstract contract AVSStorage {
     /// @notice addresses of register operators
     address[] internal _operators;
 
-    /// @notice operators wheather or not to register
+    /// @notice Map operator address whether it is registered
+    mapping(address => bool) internal _operatorRegistered;
+
+    /// @notice operators allowed to register
     mapping(address => bool) internal _allowlist;
 
     ///@notice supported strategy list(eg.stETH/cbETH....)
-    IAVS.StrategyParam[] internal _strategyparams;
+    IAVS.StrategyParam[] internal _strategyParams;
 
     /// @notice max number of operators that can be register
 

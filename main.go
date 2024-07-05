@@ -8,7 +8,6 @@ import (
 	"github.com/chainbase-avs/cli/cmd"
 )
 
-// 导入生成的合约包
 func main() {
 
 	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
