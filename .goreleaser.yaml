@@ -35,5 +35,5 @@ changelog:
 
 release:
   github:
-    owner: ddl-hust
-    name: avs-contracts
+    owner: chainbase-labs
+    name: chainbase-avs-contracts
