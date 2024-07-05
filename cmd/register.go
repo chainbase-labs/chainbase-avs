@@ -108,7 +108,7 @@ func Register(ctx context.Context, cfg RegConfig) error {
 	if err != nil {
 		return err
 	} else if err := deps.VerifyFunc(eigenCfg.Operator); err != nil {
-		return errors.Wrap(err, "config validation failed")
+		return err
 	}
 
 	password, err := deps.Prompter.InputHiddenString("Enter password to decrypt the ecdsa private key:", "",
