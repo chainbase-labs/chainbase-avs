@@ -9,7 +9,7 @@ type RegConfig struct {
 	PrivateKey string
 }
 
-func BindRegConfig(cmd *cobra.Command, cfg *RegConfig) {
+func BindRegisterConfig(cmd *cobra.Command, cfg *RegConfig) {
 	BindAVSAddress(cmd, &cfg.AVSAddr)
 
 	const flagConfig = "private-key"
