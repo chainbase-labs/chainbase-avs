@@ -18,6 +18,10 @@ Before registering as an AVS, ensure that the operator has already registered wi
 
 `forge script script/AVS.s.sol:DeployAVS --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast -vvvv`
 
+**Verify & Publish to Etherscan**
+
+`forge verify-contract $AVS_ADDRESS  src/AVS.sol:AVS -e $ETHERSCAN_API_KEY --rpc-url $RPC_URL --show-standard-json-input > standard-input.json`
+
 **check avs status**
 
 - check operators
@@ -34,3 +38,8 @@ Before registering as an AVS, ensure that the operator has already registered wi
 **local release**
 
 `goreleaser release --snapshot --rm-dist`
+
+
+TODO: 
+- add proxy contract
+- offical metadata
