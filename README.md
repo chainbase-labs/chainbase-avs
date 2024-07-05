@@ -1,12 +1,20 @@
 
+## Chainbase avs 
+
+AVS Core Contracts and Registration-related CLI Tools
+
+Before registering as an AVS, ensure that the operator has already registered with EigenLayer. For reference, see: https://docs.eigenlayer.xyz/eigenlayer/operator-guides/operator-installation
+
+
+
+
+## deployment
  **git submodule**
 
 `git submodule update --init --recursive`
 
-`git submodule update --force --recursive --remote`
 
-
-**deploy**
+**deploy contract**
 
 `forge script script/AVS.s.sol:DeployAVS --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast -vvvv`
 
@@ -23,6 +31,6 @@
 
 
 
-**release**
+**local release**
 
 `goreleaser release --snapshot --rm-dist`
