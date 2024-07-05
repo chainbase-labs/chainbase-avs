@@ -8,8 +8,10 @@ import (
 	"log"
 	"log/slog"
 	"math/big"
+	"os"
 	"time"
 
+	"cosmossdk.io/errors"
 	mc "github.com/chainbase-avs/cli/bindings"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -18,6 +20,12 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
+
+	eigentypes "github.com/Layr-Labs/eigenlayer-cli/pkg/types"
+	eigenutils "github.com/Layr-Labs/eigenlayer-cli/pkg/utils"
+	eigenecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
+	eigensdktypes "github.com/Layr-Labs/eigensdk-go/types"
 )
 
 func init() {
@@ -30,7 +38,10 @@ var registerCmd = &cobra.Command{
 	Short: "register to avs",
 	Long:  `register to avs`,
 	Run: func(cmd *cobra.Command, args []string) {
-		Register(cmd.Context(), cfg)
+		err := Register(cmd.Context(), cfg)
+		if err != nil {
+			slog.Error("failed to register", "error", err)
+		}
 	},
 }
 
@@ -40,41 +51,13 @@ var (
 	RPC_URL            = "https://rpc.ankr.com/eth_holesky"
 )
 
-func getTxFailureReason(client *ethclient.Client, tx *types.Transaction, blockNumber *big.Int) (string, error) {
-
-	from, err := types.Sender(types.NewEIP155Signer(tx.ChainId()), tx)
-	if err != nil {
-		return "", fmt.Errorf("failed to get tx sender: %v", err)
-	}
-	msg := ethereum.CallMsg{
-		From:     from,
-		To:       tx.To(),
-		Gas:      tx.Gas(),
-		GasPrice: tx.GasPrice(),
-		Value:    tx.Value(),
-		Data:     tx.Data(),
-	}
-
-	// 使用 CallContract 来模拟交易
-	result, err := client.CallContract(context.Background(), msg, blockNumber)
-	if err != nil {
-		return "", fmt.Errorf("call contract failed: %v", err)
-	}
-
-	// 解析错误信息
-	return string(result), nil
-}
-
 // makeAuth creates a transaction signer from a private key
-func makeAuth(client *ethclient.Client, cfg RegConfig) (*bind.TransactOpts, error) {
-	privateKey, err := crypto.HexToECDSA(cfg.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
+func makeAuth(client *ethclient.Client, privateKey *ecdsa.PrivateKey) (*bind.TransactOpts, error) {
+
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		return nil, err
+		return nil, fmt.Errorf("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
 	}
 	slog.Info("public key ", "address:", crypto.PubkeyToAddress(*publicKeyECDSA))
 
@@ -102,15 +85,45 @@ func makeAuth(client *ethclient.Client, cfg RegConfig) (*bind.TransactOpts, erro
 	return auth, nil
 }
 
+// RegDeps contains the Register dependencies that are abstracted for testing.
+type RegDeps struct {
+	Prompter   eigenutils.Prompter
+	VerifyFunc func(eigensdktypes.Operator) error
+}
+
 func Register(ctx context.Context, cfg RegConfig) error {
+
+	deps := RegDeps{
+		Prompter: eigenutils.NewPrompter(),
+		VerifyFunc: func(op eigensdktypes.Operator) error {
+			return op.Validate()
+		},
+	}
 
 	contractAddress := common.HexToAddress(AVSContractAddress)
 	avsDirAddr := common.HexToAddress(AVSDirContractAddr)
-	privateKey, err := crypto.HexToECDSA(cfg.PrivateKey)
+
+	//0.read eigenlayer config to get ecdsa private key
+	eigenCfg, err := readConfig(cfg.ConfigFile)
 	if err != nil {
-		slog.Error("failed to convert private key", "error", err)
+		return err
+	} else if err := deps.VerifyFunc(eigenCfg.Operator); err != nil {
+		return errors.Wrap(err, "config validation failed")
+	}
+
+	password, err := deps.Prompter.InputHiddenString("Enter password to decrypt the ecdsa private key:", "",
+		func(string) error {
+			return nil
+		},
+	)
+	if err != nil {
 		return err
 	}
+	privateKey, err := eigenecdsa.ReadKey(eigenCfg.PrivateKeyStorePath, password)
+	if err != nil {
+		return err
+	}
+
 	//1. eth client
 	client, err := ethclient.Dial(RPC_URL)
 	if err != nil {
@@ -131,7 +144,7 @@ func Register(ctx context.Context, cfg RegConfig) error {
 	}
 
 	//3. sign related
-	auth, err := makeAuth(client, cfg)
+	auth, err := makeAuth(client, privateKey)
 	if err != nil {
 		slog.Error("failed to create a transaction signer", "error", err)
 	}
@@ -189,4 +202,48 @@ func Register(ctx context.Context, cfg RegConfig) error {
 
 	return nil
 
+}
+
+func getTxFailureReason(client *ethclient.Client, tx *types.Transaction, blockNumber *big.Int) (string, error) {
+
+	from, err := types.Sender(types.NewEIP155Signer(tx.ChainId()), tx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get tx sender: %v", err)
+	}
+	msg := ethereum.CallMsg{
+		From:     from,
+		To:       tx.To(),
+		Gas:      tx.Gas(),
+		GasPrice: tx.GasPrice(),
+		Value:    tx.Value(),
+		Data:     tx.Data(),
+	}
+
+	// 使用 CallContract 来模拟交易
+	result, err := client.CallContract(context.Background(), msg, blockNumber)
+	if err != nil {
+		return "", fmt.Errorf("call contract failed: %v", err)
+	}
+
+	// 解析错误信息
+	return string(result), nil
+}
+
+// readConfig returns the eigen-layer operator configuration from the given file.
+func readConfig(file string) (eigentypes.OperatorConfigNew, error) {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		return eigentypes.OperatorConfigNew{}, errors.Wrap(err, "eigen config file not found")
+	}
+
+	bz, err := os.ReadFile(file)
+	if err != nil {
+		return eigentypes.OperatorConfigNew{}, errors.Wrap(err, "read eigen config file")
+	}
+
+	var config eigentypes.OperatorConfigNew
+	if err := yaml.Unmarshal(bz, &config); err != nil {
+		return eigentypes.OperatorConfigNew{}, errors.Wrap(err, "unmarshal eigen config file")
+	}
+
+	return config, nil
 }

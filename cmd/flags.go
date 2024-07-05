@@ -6,15 +6,15 @@ import (
 
 type RegConfig struct {
 	AVSAddr    string
-	PrivateKey string
+	ConfigFile string
 }
 
 func BindRegisterConfig(cmd *cobra.Command, cfg *RegConfig) {
 	BindAVSAddress(cmd, &cfg.AVSAddr)
 
-	const flagConfig = "private-key"
-	cmd.Flags().StringVar(&cfg.PrivateKey, flagConfig, cfg.PrivateKey, "private key of the operator")
-	// _ = cmd.MarkFlagRequired(flagConfig)
+	const flagConfig = "config-file"
+	cmd.Flags().StringVar(&cfg.ConfigFile, flagConfig, cfg.ConfigFile, "Path to the Eigen-Layer operator yaml configuration file")
+	_ = cmd.MarkFlagRequired(flagConfig)
 }
 
 func BindAVSAddress(cmd *cobra.Command, addr *string) {
