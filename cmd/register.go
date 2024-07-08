@@ -79,8 +79,8 @@ func makeAuth(client *ethclient.Client, privateKey *ecdsa.PrivateKey) (*bind.Tra
 		return nil, err
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	auth.Value = big.NewInt(0)     // 如果合约调用需要发送ETH，则这里设置
-	auth.GasLimit = uint64(300000) // 设置一个合适的gas限制
+	auth.Value = big.NewInt(0)
+	auth.GasLimit = uint64(300000)
 	auth.GasPrice = gasPrice
 	return auth, nil
 }
@@ -219,13 +219,12 @@ func getTxFailureReason(client *ethclient.Client, tx *types.Transaction, blockNu
 		Data:     tx.Data(),
 	}
 
-	// 使用 CallContract 来模拟交易
+	// use CallContract mock tx
 	result, err := client.CallContract(context.Background(), msg, blockNumber)
 	if err != nil {
 		return "", fmt.Errorf("call contract failed: %v", err)
 	}
 
-	// 解析错误信息
 	return string(result), nil
 }
 
