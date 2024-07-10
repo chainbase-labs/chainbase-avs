@@ -14,9 +14,17 @@ Before registering as an AVS, ensure that the operator has already registered wi
 `git submodule update --init --recursive`
 
 
-**deploy contract**
+### deploy contract
+
+- Deploy AVS
 
 `forge script script/AVS.s.sol:DeployAVS --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast -vvvv`
+
+- Deploy ProxyAdmin
+
+`forge script script/DeplyProxyAdmin.s.sol:DeployProxyAdmin --rpc-url $RPC_URL --private-key $PROXY_ADMIN_DEPLOYER_KEY --broadcast -vvvv`
+
+
 
 **Verify & Publish to Etherscan**
 
