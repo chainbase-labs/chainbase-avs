@@ -46,7 +46,7 @@ var registerCmd = &cobra.Command{
 }
 
 var (
-	AVSContractAddress = "0x7F521D31170266E49B269B06C65555badEB2a195"
+	AVSContractAddress = "0x5E78eFF26480A75E06cCdABe88Eb522D4D8e1C9d"
 	AVSDirContractAddr = "0x055733000064333CaDDbC92763c58BF0192fFeBf"
 	RPC_URL            = "https://rpc.ankr.com/eth_holesky"
 )
@@ -164,18 +164,20 @@ func Register(ctx context.Context, cfg RegConfig) error {
 	}
 	digestHashSlice := digestHash[:]
 
-	r, s, err := ecdsa.Sign(rand.Reader, privateKey, digestHashSlice)
+	sig, err := crypto.Sign(digestHashSlice, privateKey)
 	if err != nil {
-		log.Fatal(err)
-
+		return fmt.Errorf("failed to sign digest hash: %v", err)
 	}
-	v := new(big.Int).SetInt64(27) // v = 27 or 28 default:27
-	signature := append(r.Bytes(), s.Bytes()...)
-	signature = append(signature, byte(v.Uint64()))
+	r := new(big.Int).SetBytes(sig[:32])
+	s := new(big.Int).SetBytes(sig[32:64])
+	v := sig[64] + 27 // add 27 to v to conform with the Ethereum standard
 
-	slog.Info("sign", "signature", signature)
-	slog.Info("salt", "salt", salt)
-	slog.Info("expiry", "expiry", expiry)
+	signature := append(r.Bytes(), s.Bytes()...)
+	signature = append(signature, v)
+
+	slog.Debug("signature", "r", r, "s", s, "v", v)
+	slog.Debug("salt", "salt", salt)
+	slog.Debug("expiry", "expiry", expiry)
 
 	// 5. register
 	tx, err := avsInstance.RegisterOperator(auth, mc.ISignatureUtilsSignatureWithSaltAndExpiry{
