@@ -8,17 +8,27 @@ import {IAVSDirectory} from "@eigenlayer/contracts/interfaces/IAVSDirectory.sol"
 import {ISignatureUtils} from "@eigenlayer/contracts/interfaces/ISignatureUtils.sol";
 import "../Script/StrategyParams.s.sol";
 
-contract AVS is IAVS, AVSStorage {
+import {OwnableUpgradeable} from "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
+
+contract AVS is IAVS, OwnableUpgradeable, AVSStorage {
     /// @notice EigenLayer core DelegationManager
     IDelegationManager internal immutable _delegationManager;
 
     /// @notice EigenLayer core AVSDirectory
     IAVSDirectory internal immutable _avsDirectory;
 
-    constructor(IDelegationManager delegationManager, IAVSDirectory avsDirectory, string memory metadataURI_) {
+    constructor(IDelegationManager delegationManager, IAVSDirectory avsDirectory) {
         _delegationManager = delegationManager;
         _avsDirectory = avsDirectory;
 
+        _disableInitializers();
+    }
+
+    /**
+     * @notice Initialize the Chainbase AVS  contract.
+     * @param metadataURI_      Metadata URI for the AVS
+     */
+    function initialize(string calldata metadataURI_) external initializer {
         _setStrategyParams(StrategyParams.holesky());
 
         if (bytes(metadataURI_).length > 0) {
@@ -126,6 +136,6 @@ contract AVS is IAVS, AVSStorage {
             }
         }
 
-        // emit StrategyParamsSet(params);
+        emit StrategyParamsSet(params);
     }
 }

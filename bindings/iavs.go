@@ -39,7 +39,7 @@ type IAVSStrategyParam struct {
 
 // IAVSMetaData contains all meta data concerning the IAVS contract.
 var IAVSMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"canRegister\",\"inputs\":[{\"name\":\"operator\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"\",\"type\":\"string\",\"internalType\":\"string\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"operators\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address[]\",\"internalType\":\"address[]\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"registerOperator\",\"inputs\":[{\"name\":\"operatorSignature\",\"type\":\"tuple\",\"internalType\":\"structISignatureUtils.SignatureWithSaltAndExpiry\",\"components\":[{\"name\":\"signature\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"salt\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"expiry\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"strategyParams\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple[]\",\"internalType\":\"structIAVS.StrategyParam[]\",\"components\":[{\"name\":\"strategy\",\"type\":\"address\",\"internalType\":\"contractIStrategy\"},{\"name\":\"multiplier\",\"type\":\"uint96\",\"internalType\":\"uint96\"}]}],\"stateMutability\":\"view\"},{\"type\":\"event\",\"name\":\"OperatorAdded\",\"inputs\":[{\"name\":\"operator\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"OperatorRemoved\",\"inputs\":[{\"name\":\"operator\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"}],\"anonymous\":false}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"canRegister\",\"inputs\":[{\"name\":\"operator\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"\",\"type\":\"string\",\"internalType\":\"string\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"operators\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address[]\",\"internalType\":\"address[]\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"registerOperator\",\"inputs\":[{\"name\":\"operatorSignature\",\"type\":\"tuple\",\"internalType\":\"structISignatureUtils.SignatureWithSaltAndExpiry\",\"components\":[{\"name\":\"signature\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"salt\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"expiry\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"strategyParams\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple[]\",\"internalType\":\"structIAVS.StrategyParam[]\",\"components\":[{\"name\":\"strategy\",\"type\":\"address\",\"internalType\":\"contractIStrategy\"},{\"name\":\"multiplier\",\"type\":\"uint96\",\"internalType\":\"uint96\"}]}],\"stateMutability\":\"view\"},{\"type\":\"event\",\"name\":\"OperatorAdded\",\"inputs\":[{\"name\":\"operator\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"OperatorRemoved\",\"inputs\":[{\"name\":\"operator\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"StrategyParamsSet\",\"inputs\":[{\"name\":\"params\",\"type\":\"tuple[]\",\"indexed\":false,\"internalType\":\"structIAVS.StrategyParam[]\",\"components\":[{\"name\":\"strategy\",\"type\":\"address\",\"internalType\":\"contractIStrategy\"},{\"name\":\"multiplier\",\"type\":\"uint96\",\"internalType\":\"uint96\"}]}],\"anonymous\":false}]",
 }
 
 // IAVSABI is the input ABI used to generate the binding from.
@@ -585,6 +585,140 @@ func (_IAVS *IAVSFilterer) WatchOperatorRemoved(opts *bind.WatchOpts, sink chan<
 func (_IAVS *IAVSFilterer) ParseOperatorRemoved(log types.Log) (*IAVSOperatorRemoved, error) {
 	event := new(IAVSOperatorRemoved)
 	if err := _IAVS.contract.UnpackLog(event, "OperatorRemoved", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IAVSStrategyParamsSetIterator is returned from FilterStrategyParamsSet and is used to iterate over the raw logs and unpacked data for StrategyParamsSet events raised by the IAVS contract.
+type IAVSStrategyParamsSetIterator struct {
+	Event *IAVSStrategyParamsSet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IAVSStrategyParamsSetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IAVSStrategyParamsSet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IAVSStrategyParamsSet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IAVSStrategyParamsSetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IAVSStrategyParamsSetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IAVSStrategyParamsSet represents a StrategyParamsSet event raised by the IAVS contract.
+type IAVSStrategyParamsSet struct {
+	Params []IAVSStrategyParam
+	Raw    types.Log // Blockchain specific contextual infos
+}
+
+// FilterStrategyParamsSet is a free log retrieval operation binding the contract event 0x236150b37b22bc9557672069e2dfb3f05be1dafd1f9ead78df2f8b855ee69640.
+//
+// Solidity: event StrategyParamsSet((address,uint96)[] params)
+func (_IAVS *IAVSFilterer) FilterStrategyParamsSet(opts *bind.FilterOpts) (*IAVSStrategyParamsSetIterator, error) {
+
+	logs, sub, err := _IAVS.contract.FilterLogs(opts, "StrategyParamsSet")
+	if err != nil {
+		return nil, err
+	}
+	return &IAVSStrategyParamsSetIterator{contract: _IAVS.contract, event: "StrategyParamsSet", logs: logs, sub: sub}, nil
+}
+
+// WatchStrategyParamsSet is a free log subscription operation binding the contract event 0x236150b37b22bc9557672069e2dfb3f05be1dafd1f9ead78df2f8b855ee69640.
+//
+// Solidity: event StrategyParamsSet((address,uint96)[] params)
+func (_IAVS *IAVSFilterer) WatchStrategyParamsSet(opts *bind.WatchOpts, sink chan<- *IAVSStrategyParamsSet) (event.Subscription, error) {
+
+	logs, sub, err := _IAVS.contract.WatchLogs(opts, "StrategyParamsSet")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IAVSStrategyParamsSet)
+				if err := _IAVS.contract.UnpackLog(event, "StrategyParamsSet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseStrategyParamsSet is a log parse operation binding the contract event 0x236150b37b22bc9557672069e2dfb3f05be1dafd1f9ead78df2f8b855ee69640.
+//
+// Solidity: event StrategyParamsSet((address,uint96)[] params)
+func (_IAVS *IAVSFilterer) ParseStrategyParamsSet(log types.Log) (*IAVSStrategyParamsSet, error) {
+	event := new(IAVSStrategyParamsSet)
+	if err := _IAVS.contract.UnpackLog(event, "StrategyParamsSet", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

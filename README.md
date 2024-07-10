@@ -28,7 +28,9 @@ Before registering as an AVS, ensure that the operator has already registered wi
 
 **Verify & Publish to Etherscan**
 
-`forge verify-contract $AVS_ADDRESS  src/AVS.sol:AVS -e $ETHERSCAN_API_KEY --rpc-url $RPC_URL --show-standard-json-input > standard-input.json`
+`forge verify-contract $AVS_IMPL_ADDRESS  --constructor-args xxx  src/AVS.sol:AVS  --watch -e $ETHERSCAN_API_KEY --rpc-url $RPC_URL`
+
+`forge verify-contract $AVS_PROXY_ADDRESS lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol:TransparentUpgradeableProxy --constructor-args xxx   --watch -e $ETHERSCAN_API_KEY --rpc-url $RPC_URL`
 
 **check avs status**
 
@@ -49,5 +51,4 @@ Before registering as an AVS, ensure that the operator has already registered wi
 
 
 TODO: 
-- add proxy contract
 - offical metadata

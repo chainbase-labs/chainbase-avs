@@ -21,6 +21,8 @@ interface IAVS {
      */
     event OperatorRemoved(address indexed operator);
 
+    event StrategyParamsSet(StrategyParam[] params);
+
     /**
      * @notice Struct representing an AVS operator
      * @custom:field addr       The operator's ethereum address
