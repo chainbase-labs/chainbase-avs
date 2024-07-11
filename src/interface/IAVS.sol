@@ -64,6 +64,12 @@ interface IAVS {
     function registerOperator(ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature) external;
 
     /**
+     * @notice Update avs's metadata URI
+     * @param metadataURI the URI
+     */
+    function UpdateMetadataURI(string calldata metadataURI) external;
+
+    /**
      * @notice Check if an operator can register to the AVS.
      *         Returns true, with no reason, if the operator can register to the AVS.
      *         Returns false, with a reason, if the operator cannot register to the AVS.

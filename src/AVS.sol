@@ -72,6 +72,10 @@ contract AVS is IAVS, OwnableUpgradeable, AVSStorage {
         emit OperatorAdded(operator);
     }
 
+    function UpdateMetadataURI(string calldata metadataURI) external {
+        _avsDirectory.updateAVSMetadataURI(metadataURI);
+    }
+
     function getRestakeableStrategies() external view returns (address[] memory) {
         return _getRestakeableStrategies();
     }
