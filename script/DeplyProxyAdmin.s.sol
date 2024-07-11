@@ -14,16 +14,16 @@ import {console} from "forge-std/console.sol";
 contract DeployProxyAdmin is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("PROXY_ADMIN_DEPLOYER_KEY");
-        address ownerKey = vm.envAddress("PROXY_ADMIN_OWNER_ADDRESS");
+        address ownerAddress = vm.envAddress("PROXY_ADMIN_OWNER_ADDRESS");
 
         // require(block.chainid == 1, "Only mainnet deployment.");
 
         vm.startBroadcast(deployerKey);
-        (ProxyAdmin proxyAdmin) = deploy(ownerKey);
+        (ProxyAdmin proxyAdmin) = deploy(ownerAddress);
         vm.stopBroadcast();
 
         console.log("ProxyAdmin deployed at: ", address(proxyAdmin));
-        console.log("ProxyAdmin owner: ", ownerKey);
+        console.log("ProxyAdmin owner: ", ownerAddress);
     }
 
     function deploy(address owner) public returns (ProxyAdmin proxyAdmin) {
