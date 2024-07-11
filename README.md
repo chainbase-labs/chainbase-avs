@@ -16,21 +16,24 @@ Before registering as an AVS, ensure that the operator has already registered wi
 
 ### deploy contract
 
-- Deploy AVS
+- Deploy AVS proxy && impl
 
-`forge script script/AVS.s.sol:DeployAVS --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast -vvvv`
+`forge script --chain holesky script/AVS.s.sol:DeployAVS --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast -vvvv --verify`
 
 - Deploy ProxyAdmin
 
-`forge script script/DeplyProxyAdmin.s.sol:DeployProxyAdmin --rpc-url $RPC_URL --private-key $PROXY_ADMIN_DEPLOYER_KEY --broadcast -vvvv`
+`forge script --chain holesky script/DeplyProxyAdmin.s.sol:DeployProxyAdmin --rpc-url $RPC_URL --private-key $PROXY_ADMIN_DEPLOYER_KEY --broadcast -vvvv --verify`
 
+- Just AVS Impl(used for upgrade)
 
-
-**Verify & Publish to Etherscan**
-
-`forge verify-contract $AVS_IMPL_ADDRESS  --constructor-args xxx  src/AVS.sol:AVS  --watch -e $ETHERSCAN_API_KEY --rpc-url $RPC_URL`
-
-`forge verify-contract $AVS_PROXY_ADDRESS lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol:TransparentUpgradeableProxy --constructor-args xxx   --watch -e $ETHERSCAN_API_KEY --rpc-url $RPC_URL`
+```shell
+forge create --chain holesky \
+    --constructor-args "$DELEGATION_MANAGER_ADDRESS" "$AVS_DIRECTORY_ADDRESS" \
+    --private-key $PRIVATE_KEY \
+    -r $RPC_URL \
+    --verify \
+    src/AVS.sol:AVS
+```
 
 **check avs status**
 
