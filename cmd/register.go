@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 
 	eigentypes "github.com/Layr-Labs/eigenlayer-cli/pkg/types"
@@ -33,18 +34,12 @@ var registerCmd = &cobra.Command{
 	Short: "register to avs",
 	Long:  `register to avs`,
 	Run: func(cmd *cobra.Command, args []string) {
-		err := Register(cmd.Context(), cfg)
+		err := Register(cmd.Context())
 		if err != nil {
 			slog.Error("failed to register", "error", err)
 		}
 	},
 }
-
-var (
-	AVSContractAddress = "0x5E78eFF26480A75E06cCdABe88Eb522D4D8e1C9d"
-	AVSDirContractAddr = "0x055733000064333CaDDbC92763c58BF0192fFeBf"
-	RPC_URL            = "https://rpc.ankr.com/eth_holesky"
-)
 
 // makeAuth creates a transaction signer from a private key
 func makeAuth(client *ethclient.Client, privateKey *ecdsa.PrivateKey) (*bind.TransactOpts, error) {
@@ -86,7 +81,7 @@ type RegDeps struct {
 	VerifyFunc func(eigensdktypes.Operator) error
 }
 
-func Register(ctx context.Context, cfg RegConfig) error {
+func Register(ctx context.Context) error {
 
 	deps := RegDeps{
 		Prompter: eigenutils.NewPrompter(),
@@ -95,32 +90,25 @@ func Register(ctx context.Context, cfg RegConfig) error {
 		},
 	}
 
-	contractAddress := common.HexToAddress(AVSContractAddress)
-	avsDirAddr := common.HexToAddress(AVSDirContractAddr)
+	contractAddress := common.HexToAddress(viper.GetString(AVSContractAddress))
+	avsDirAddr := common.HexToAddress(viper.GetString(AVSDirContractAddr))
 
 	//0.read eigenlayer config to get ecdsa private key
-	eigenCfg, err := readConfig(cfg.ConfigFile)
+	eigenCfg, err := readConfig(viper.GetString(OperatorConfigPath))
 	if err != nil {
 		return err
 	} else if err := deps.VerifyFunc(eigenCfg.Operator); err != nil {
 		return err
 	}
 
-	password, err := deps.Prompter.InputHiddenString("Enter password to decrypt the ecdsa private key:", "",
-		func(string) error {
-			return nil
-		},
-	)
-	if err != nil {
-		return err
-	}
+	password := viper.GetString(KeystorePassword)
 	privateKey, err := eigenecdsa.ReadKey(eigenCfg.PrivateKeyStorePath, password)
 	if err != nil {
 		return err
 	}
 
 	//1. eth client
-	client, err := ethclient.Dial(RPC_URL)
+	client, err := ethclient.Dial(viper.GetString(RPC_URL))
 	if err != nil {
 		slog.Error("failed to connect to the Ethereum client", "error", err)
 		return err

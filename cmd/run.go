@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"log/slog"
+	"os"
 
 	"github.com/pkg/errors"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	eigenutils "github.com/Layr-Labs/eigenlayer-cli/pkg/utils"
 	eigenecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
@@ -23,14 +25,15 @@ var runCmd = &cobra.Command{
 	Short: "monitor manualscript requests and send signed to gateway",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		err := Run(cmd.Context(), cfg)
+		err := Run(cmd.Context())
 		if err != nil {
 			slog.Error("failed to run", "error", err)
+			os.Exit(1)
 		}
 	},
 }
 
-func Run(ctx context.Context, cfg RegConfig) error {
+func Run(ctx context.Context) error {
 
 	deps := RegDeps{
 		Prompter: eigenutils.NewPrompter(),
@@ -39,31 +42,25 @@ func Run(ctx context.Context, cfg RegConfig) error {
 		},
 	}
 
-	contractAddress := common.HexToAddress(AVSContractAddress)
+	contractAddress := common.HexToAddress(viper.GetString(AVSContractAddress))
 
 	//0.read eigenlayer config to get ecdsa private key
-	eigenCfg, err := readConfig(cfg.ConfigFile)
+	eigenCfg, err := readConfig(viper.GetString(OperatorConfigPath))
 	if err != nil {
 		return err
 	} else if err := deps.VerifyFunc(eigenCfg.Operator); err != nil {
 		return err
 	}
 
-	password, err := deps.Prompter.InputHiddenString("Enter password to decrypt the ecdsa private key:", "",
-		func(string) error {
-			return nil
-		},
-	)
-	if err != nil {
-		return err
-	}
+	password := viper.GetString(KeystorePassword)
+
 	privateKey, err := eigenecdsa.ReadKey(eigenCfg.PrivateKeyStorePath, password)
 	if err != nil {
 		return err
 	}
 
 	//1. eth client
-	client, err := ethclient.Dial(RPC_URL)
+	client, err := ethclient.Dial(viper.GetString(RPC_URL))
 	if err != nil {
 		slog.Error("failed to connect to the Ethereum client", "error", err)
 		return err

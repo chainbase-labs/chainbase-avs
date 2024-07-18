@@ -59,3 +59,8 @@ forge create --chain holesky \
 **local release**
 
 `goreleaser release --snapshot --rm-dist`
+
+
+## run register/task
+
+repalce field in avs.toml.example
