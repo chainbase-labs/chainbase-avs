@@ -28,11 +28,6 @@ import (
 	eigensdktypes "github.com/Layr-Labs/eigensdk-go/types"
 )
 
-func init() {
-	rootCmd.AddCommand(registerCmd)
-	BindRegisterConfig(registerCmd, &cfg)
-}
-
 var registerCmd = &cobra.Command{
 	Use:   "register",
 	Short: "register to avs",

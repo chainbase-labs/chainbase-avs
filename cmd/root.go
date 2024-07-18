@@ -19,14 +19,12 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	BindRegisterConfig(rootCmd, &cfg)
+	rootCmd.AddCommand(registerCmd, runCmd)
+
+	BindRegisterConfig(registerCmd, &cfg)
+	BindRegisterConfig(runCmd, &cfg)
 }
 
 func Execute() error {
 	return rootCmd.Execute()
 }
-
-// Register registers the operator with the ChainBase AVS contract.
-//
-// It assumes that the operator is already registered with the Eigen-Layer
-// and that the eigen-layer configuration file (and ecdsa keystore) is present on disk.
