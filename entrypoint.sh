@@ -1,6 +1,6 @@
 #!/bin/bash
 
-/opt/chainbase-cli run --config-file /app/operator.yaml
+/opt/chainbase-cli run --config /opt/avs.toml
 
 if [ $? -eq 0 ]; then
     echo "Signature verification passed. Starting Flink..."

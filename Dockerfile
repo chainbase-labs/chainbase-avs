@@ -22,6 +22,7 @@ COPY --from=go-build /app/chainbase-cli /opt/chainbase-cli
 
 # Copy entrypoint script
 COPY entrypoint.sh /opt/entrypoint.sh
+COPY avs.toml /opt/avs.toml
 RUN chmod +x /opt/entrypoint.sh
 
 # Switch back to the flink user
