@@ -7,4 +7,6 @@ const (
 
 	OperatorConfigPath = "operator_config_path"
 	KeystorePassword   = "keystore_pwd"
+
+	HealthCheckPort = 8080
 )

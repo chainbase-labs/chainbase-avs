@@ -2,9 +2,13 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"log/slog"
+	"net/http"
 	"os"
 
+	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
 
 	mc "github.com/chainbase-avs/cli/bindings"
@@ -30,7 +34,19 @@ var runCmd = &cobra.Command{
 			slog.Error("failed to run", "error", err)
 			os.Exit(1)
 		}
+
+		router := httprouter.New()
+		router.GET("/eigen/node/health", handleHealth)
+		
+		err = http.ListenAndServe(fmt.Sprintf(":%d", HealthCheckPort), router)
+		if err != nil {
+			log.Println(err)
+		}
 	},
+}
+
+func handleHealth(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	w.WriteHeader(http.StatusOK)
 }
 
 func Run(ctx context.Context) error {
