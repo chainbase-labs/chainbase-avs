@@ -23,9 +23,13 @@ repalce field in avs.toml.example
 docker build -t chainbase-avs .
 
 #  run task 
-docker run -it --mount type=bind,source=/root/chainbase-avs-contracts/operator.yaml,target=/opt/operator.yaml   --mount type=bind,source=/root/chainbase-avs-contracts/eigen-test.ecdsa.key.json,target=/opt/eigen-test.ecdsa.key.json   chainbase-avs:latest
+docker run -itd -p 8080:8080 --mount type=bind,source=/root/chainbase-avs-contracts/operator.yaml,target=/opt/operator.yaml   --mount type=bind,source=/root/chainbase-avs-contracts/eigen-test.ecdsa.key.json,target=/opt/eigen-test.ecdsa.key.json   chainbase-avs:latest
 
 ```
+
+### node health check
+
+Operator can monitor the process alive by checking api: `GET /eigen/node/health`, http status 200 means OK
 
 ## register
 
