@@ -17,6 +17,8 @@ Before registering as an AVS, ensure that the operator has already registered wi
 
 repalce field in avs.toml.example
 
+notice: operator.yaml's `private_key_store_path` shuold points to the corresponding file path in the container.
+
 ```shell
 
 # build img

@@ -1,5 +1,5 @@
 # Stage 1: Build Golang cli
-FROM --platform=linux/amd64 golang:1.21-alpine AS go-build
+FROM --platform=linux/amd64 golang:1.22-alpine AS go-build
 
 WORKDIR /app
 
