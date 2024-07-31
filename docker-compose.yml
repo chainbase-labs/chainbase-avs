@@ -35,9 +35,7 @@ services:
         taskmanager.numberOfTaskSlots: 4
 
   chainbase-node:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: repository.chainbase.com/network/chainbase-node:v0.1.7
     container_name: chainbase-node
     ports:
       - '8080:8080'
