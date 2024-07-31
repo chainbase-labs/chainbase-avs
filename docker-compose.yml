@@ -44,9 +44,11 @@ services:
     volumes:
       - ${OPERATOR_CONFIG_PATH:-./operator.yaml}:/opt/operator.yaml
       - ${EIGEN_KEY_PATH:-./eigen-test.ecdsa.key.json}:/opt/eigen-test.ecdsa.key.json
+      - ${AVS_CONFIG_PATH:-./avs.toml}:/root/avs.toml
     environment:
       - OPERATOR_CONFIG_PATH=${OPERATOR_CONFIG_PATH:-./operator.yaml}
       - EIGEN_KEY_PATH=${EIGEN_KEY_PATH:-./eigen-test.ecdsa.key.json}
+      - AVS_CONFIG_PATH=${AVS_CONFIG_PATH:-./avs.toml}
     depends_on:
       - prometheus
       - flink-jobmanager
