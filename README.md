@@ -26,6 +26,16 @@ notice: `operator.yaml`'s `private_key_store_path` shuold points to the correspo
 export OPERATOR_CONFIG_PATH=/path/to/operator.yaml  EIGEN_KEY_PATH=/path/to/ecdsa.key.json
 
 docker-compose up --build -d
+
+# check avs status
+docker-compose logs -f  chainbase-node
+
+output similar like:
+
+chainbase-node  | time=2024-07-31T09:19:30.395Z level=INFO msg=operator address=0x20E67b6FbF0C1eCbCA2f0f6A8ffD0f0DA0031B52
+chainbase-node  | time=2024-07-31T09:19:30.395Z level=INFO msg="AVS is registered,continue"
+chainbase-node  | time=2024-07-31T09:19:46.921Z level=INFO msg="update host metrics" avsAddr=0x20E67b6FbF0C1eCbCA2f0f6A8ffD0f0DA0031B52 ip=139.162.97.248 job_manager_status=1
+chainbase-node  | time=2024-07-31T09:20:02.576Z level=INFO msg="update host metrics" avsAddr=0x20E67b6FbF0C1eCbCA2f0f6A8ffD0f0DA0031B52 ip=139.162.97.248 job_manager_status=1
 ```
 
 ### node health check

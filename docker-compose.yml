@@ -34,11 +34,11 @@ services:
         jobmanager.rpc.address: flink-jobmanager
         taskmanager.numberOfTaskSlots: 4
 
-  avs-main:
+  chainbase-node:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: avs-main
+    container_name: chainbase-node
     ports:
       - '8080:8080'
     volumes:
