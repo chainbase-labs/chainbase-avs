@@ -16,3 +16,6 @@ docs/
 avs.toml
 
 .idea/
+
+operator.yaml
+*.ecdsa.key.json

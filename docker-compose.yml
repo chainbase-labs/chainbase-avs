@@ -20,18 +20,18 @@ services:
   #     - '12345:3000'
   #   depends_on:
   #     - prometheus
-  # avs-main:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: avs-main
-  #   ports:
-  #     - '8080:8080'
-  #   volumes:
-  #     - ${OPERATOR_CONFIG_PATH:-./operator.yaml}:/opt/operator.yaml
-  #     - ${EIGEN_KEY_PATH:-./eigen-test.ecdsa.key.json}:/opt/eigen-test.ecdsa.key.json
-  #   environment:
-  #     - OPERATOR_CONFIG_PATH=${OPERATOR_CONFIG_PATH:-./operator.yaml}
-  #     - EIGEN_KEY_PATH=${EIGEN_KEY_PATH:-./eigen.ecdsa.key.json}
-  #   depends_on:
-  #     - prometheus
+  avs-main:
+    build:
+      context: .
+      dockerfile: Dockerfile.bak
+    container_name: avs-main
+    ports:
+      - '8080:8080'
+    volumes:
+      - ${OPERATOR_CONFIG_PATH:-./operator.yaml}:/opt/operator.yaml
+      - ${EIGEN_KEY_PATH:-./eigen-test.ecdsa.key.json}:/opt/eigen-test.ecdsa.key.json
+    environment:
+      - OPERATOR_CONFIG_PATH=${OPERATOR_CONFIG_PATH:-./operator.yaml}
+      - EIGEN_KEY_PATH=${EIGEN_KEY_PATH:-./eigen-test.ecdsa.key.json}
+    depends_on:
+      - prometheus
