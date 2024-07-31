@@ -49,7 +49,7 @@ var runCmd = &cobra.Command{
 			for {
 
 				prometheus.UpdateHostMetrics(avsAddr)
-				slog.Info("update host metrics", "avsAddr", avsAddr, "ip", prometheus.GetOutboundIP())
+				slog.Info("update host metrics", "avsAddr", avsAddr, "ip", prometheus.GetOutboundIP(), "job_manager_status", prometheus.GetFlinkJobManagerStatus())
 				time.Sleep(15 * time.Second)
 			}
 

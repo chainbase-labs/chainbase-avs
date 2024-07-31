@@ -11,19 +11,33 @@ services:
     ports:
       - '9091:9090'
 
-  # grafana:
-  #   image: grafana/grafana
-  #   container_name: grafana
-  #   # volumes:
-  #   #   - ./grafana/grafana.ini:/etc/grafana/grafana.ini
-  #   ports:
-  #     - '12345:3000'
-  #   depends_on:
-  #     - prometheus
+  flink-jobmanager:
+    image: flink:latest
+    container_name: flink-jobmanager
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+
+  flink-taskmanager:
+    image: flink:latest
+    container_name: flink-taskmanager
+    depends_on:
+      - flink-jobmanager
+    command: taskmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+
   avs-main:
     build:
       context: .
-      dockerfile: Dockerfile.bak
+      dockerfile: Dockerfile
     container_name: avs-main
     ports:
       - '8080:8080'
@@ -35,3 +49,5 @@ services:
       - EIGEN_KEY_PATH=${EIGEN_KEY_PATH:-./eigen-test.ecdsa.key.json}
     depends_on:
       - prometheus
+      - flink-jobmanager
+      - flink-taskmanager

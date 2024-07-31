@@ -1,5 +1,4 @@
-# Stage 1: Build Golang cli
-FROM --platform=linux/amd64 golang:1.22-alpine AS go-build
+FROM golang:1.22 as builder
 
 WORKDIR /app
 
@@ -7,25 +6,20 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o chainbase-cli .
+FROM alpine:latest  
 
-# Stage 2: Setup Flink environment
-FROM --platform=linux/amd64 flink:1.17
+RUN apk --no-cache add \
+    ca-certificates \
+    curl \
+    wget \
+    jq
 
-# Install necessary tools
-USER root
-RUN apt-get update && apt-get install -y curl
+WORKDIR /root/
 
-# Copy Golang binary
-COPY --from=go-build /app/chainbase-cli /opt/chainbase-cli
+COPY --from=builder /app/main .
+COPY avs.toml .
+RUN chmod +x main
 
-# Copy entrypoint script
-COPY entrypoint.sh /opt/entrypoint.sh
-COPY avs.toml /opt/avs.toml
-RUN chmod +x /opt/entrypoint.sh
-
-# Switch back to the flink user
-USER flink
-
-ENTRYPOINT ["/opt/entrypoint.sh"]
+CMD ["./main","run"]
