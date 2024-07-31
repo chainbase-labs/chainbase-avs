@@ -17,14 +17,25 @@ Before registering as an AVS, ensure that the operator has already registered wi
 
 repalce field in avs.toml.example
 
+notice: `operator.yaml`'s `private_key_store_path` shuold points to the corresponding file path in the container.
+
+- ${OPERATOR_CONFIG_PATH:-./operator.yaml}:/opt/operator.yaml
+- ${EIGEN_KEY_PATH:-./eigen-test.ecdsa.key.json}:/opt/eigen-test.ecdsa.key.json
+
 ```shell
+export OPERATOR_CONFIG_PATH=/path/to/operator.yaml  EIGEN_KEY_PATH=/path/to/ecdsa.key.json
 
-# build img
-docker build -t chainbase-avs .
+docker-compose up --build -d
 
-#  run task 
-docker run -itd -p 8080:8080 --mount type=bind,source=/root/chainbase-avs-contracts/operator.yaml,target=/opt/operator.yaml   --mount type=bind,source=/root/chainbase-avs-contracts/eigen-test.ecdsa.key.json,target=/opt/eigen-test.ecdsa.key.json   chainbase-avs:latest
+# check avs status
+docker-compose logs -f  chainbase-node
 
+output similar like:
+
+chainbase-node  | time=2024-07-31T09:19:30.395Z level=INFO msg=operator address=0x20E67b6FbF0C1eCbCA2f0f6A8ffD0f0DA0031B52
+chainbase-node  | time=2024-07-31T09:19:30.395Z level=INFO msg="AVS is registered,continue"
+chainbase-node  | time=2024-07-31T09:19:46.921Z level=INFO msg="update host metrics" avsAddr=0x20E67b6FbF0C1eCbCA2f0f6A8ffD0f0DA0031B52 ip=139.162.97.248 job_manager_status=1
+chainbase-node  | time=2024-07-31T09:20:02.576Z level=INFO msg="update host metrics" avsAddr=0x20E67b6FbF0C1eCbCA2f0f6A8ffD0f0DA0031B52 ip=139.162.97.248 job_manager_status=1
 ```
 
 ### node health check

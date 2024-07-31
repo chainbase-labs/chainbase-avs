@@ -102,6 +102,7 @@ func Register(ctx context.Context) error {
 	}
 
 	password := viper.GetString(KeystorePassword)
+	//TODO: what if is smart contract
 	privateKey, err := eigenecdsa.ReadKey(eigenCfg.PrivateKeyStorePath, password)
 	if err != nil {
 		return err
