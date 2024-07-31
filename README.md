@@ -17,16 +17,15 @@ Before registering as an AVS, ensure that the operator has already registered wi
 
 repalce field in avs.toml.example
 
-notice: operator.yaml's `private_key_store_path` shuold points to the corresponding file path in the container.
+notice: `operator.yaml`'s `private_key_store_path` shuold points to the corresponding file path in the container.
+
+- ${OPERATOR_CONFIG_PATH:-./operator.yaml}:/opt/operator.yaml
+- ${EIGEN_KEY_PATH:-./eigen-test.ecdsa.key.json}:/opt/eigen-test.ecdsa.key.json
 
 ```shell
+export OPERATOR_CONFIG_PATH=/path/to/operator.yaml  EIGEN_KEY_PATH=/path/to/ecdsa.key.json
 
-# build img
-docker build -t chainbase-avs .
-
-#  run task 
-docker run -itd -p 8080:8080 --mount type=bind,source=/root/chainbase-avs-contracts/operator.yaml,target=/opt/operator.yaml   --mount type=bind,source=/root/chainbase-avs-contracts/eigen-test.ecdsa.key.json,target=/opt/eigen-test.ecdsa.key.json   chainbase-avs:latest
-
+docker-compose up --build -d
 ```
 
 ### node health check
