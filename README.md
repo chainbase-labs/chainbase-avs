@@ -19,11 +19,11 @@ repalce field in avs.toml.example
 
 notice: `operator.yaml`'s `private_key_store_path` shuold points to the corresponding file path in the container.
 
-- ${OPERATOR_CONFIG_PATH:-./operator.yaml}:/opt/operator.yaml
-- ${EIGEN_KEY_PATH:-./eigen-test.ecdsa.key.json}:/opt/eigen-test.ecdsa.key.json
+- ${AVS_CONFIG_PATH:-./operator.yaml}:/opt/avs.toml
+- ${OPERATOR_KEYSTORE_PATH:-./eigen-test.ecdsa.key.json}:/opt/eigen-test.ecdsa.key.json
 
 ```shell
-export OPERATOR_CONFIG_PATH=/path/to/operator.yaml  EIGEN_KEY_PATH=/path/to/ecdsa.key.json
+export OPERATOR_KEYSTORE_PATH=/path/to/xxx.ecdsa.key.json  AVS_CONFIG_PATH=/path/to/avs.toml
 
 docker-compose up --build -d
 

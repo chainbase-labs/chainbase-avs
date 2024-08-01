@@ -21,9 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	eigenutils "github.com/Layr-Labs/eigenlayer-cli/pkg/utils"
 	eigenecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
-	eigensdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	"github.com/chainbase-avs/cli/pkg/prometheus"
 )
@@ -70,26 +68,10 @@ func Run(ctx context.Context) (string, error) {
 
 	var operatorAddress string
 
-	deps := RegDeps{
-		Prompter: eigenutils.NewPrompter(),
-		VerifyFunc: func(op eigensdktypes.Operator) error {
-			return op.Validate()
-		},
-	}
-
 	contractAddress := common.HexToAddress(viper.GetString(AVSContractAddress))
 
-	//0.read eigenlayer config to get ecdsa private key
-	eigenCfg, err := readConfig(viper.GetString(OperatorConfigPath))
-	if err != nil {
-		return operatorAddress, err
-	} else if err := deps.VerifyFunc(eigenCfg.Operator); err != nil {
-		return operatorAddress, err
-	}
-
-	password := viper.GetString(KeystorePassword)
-
-	privateKey, err := eigenecdsa.ReadKey(eigenCfg.PrivateKeyStorePath, password)
+	//0.decode keystore get ecdsa private key
+	privateKey, err := eigenecdsa.ReadKey(viper.GetString(OperatorKeystorePath), viper.GetString(KeystorePassword))
 	if err != nil {
 		return operatorAddress, err
 	}

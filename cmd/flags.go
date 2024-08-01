@@ -5,8 +5,8 @@ const (
 	AVSDirContractAddr = "avs_dir_contract_address"
 	RPC_URL            = "rpc_url"
 
-	OperatorConfigPath = "operator_config_path"
-	KeystorePassword   = "keystore_pwd"
+	OperatorKeystorePath = "operator_keystore_path"
+	KeystorePassword     = "keystore_pwd"
 
 	HealthCheckPort = 8080
 )
