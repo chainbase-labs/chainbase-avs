@@ -14,9 +14,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "chianbase-avs",
-	Short: "chianbase-avs",
-	Long:  `chianbase-avs`,
+	Use:   "chianbase-node",
+	Short: "chianbase-node",
+	Long:  `chianbase-node`,
 	// Run: func(cmd *cobra.Command, args []string) {
 	// 	Register(cmd.Context(), cfg)
 	// },

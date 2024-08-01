@@ -1,9 +1,9 @@
 # .goreleaser.yaml
-project_name: chainbase-avs-cli
+project_name: chainbase-node
 
 builds:
   - main: ./main.go
-    binary: chainbase-avs-cli
+    binary: chainbase-node
     goos:
       - linux
       - windows
