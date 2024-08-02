@@ -1,7 +1,8 @@
 package cmd
 
 import (
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
@@ -36,9 +37,9 @@ func Execute() error {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	if _, err := os.Stat(".env"); err == nil {
+		slog.Info("load env from .env file")
+		_ = godotenv.Load()
 	}
 	viper.AutomaticEnv()
 
