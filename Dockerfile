@@ -19,6 +19,7 @@ RUN apk --no-cache add \
 WORKDIR /root/
 
 COPY --from=builder /app/main .
+COPY .env .
 RUN chmod +x main
 
 CMD ["./main","run"]

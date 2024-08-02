@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -60,10 +62,18 @@ var runCmd = &cobra.Command{
 			}
 		}()
 
-		err = http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt(NodeMetricsPort)), metricsRouter)
-		if err != nil {
-			slog.Error("Failed to start metrics server", "error", err)
-		}
+		go func() {
+			err := http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt(NodeMetricsPort)), metricsRouter)
+			if err != nil {
+				slog.Error("Failed to start metrics server", "error", err)
+			}
+		}()
+
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		sig := <-sigChan
+		slog.Info("Received signal, shutting down", "signal", sig)
+
 	},
 }
 
