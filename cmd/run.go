@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -37,10 +36,11 @@ var runCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		router := httprouter.New()
-		router.GET("/eigen/node/health", handleHealth)
+		appRouter := httprouter.New()
+		appRouter.GET("/eigen/node/health", handleHealth)
 
-		router.Handler("GET", "/metrics", promhttp.Handler())
+		metricsRouter := httprouter.New()
+		metricsRouter.Handler("GET", "/metrics", promhttp.Handler())
 
 		go func() {
 
@@ -53,9 +53,16 @@ var runCmd = &cobra.Command{
 
 		}()
 
-		err = http.ListenAndServe(fmt.Sprintf(":%d", HealthCheckPort), router)
+		go func() {
+			err := http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt(NodeAppPort)), appRouter)
+			if err != nil {
+				slog.Error("Failed to start app server", "error", err)
+			}
+		}()
+
+		err = http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt(NodeMetricsPort)), metricsRouter)
 		if err != nil {
-			log.Println(err)
+			slog.Error("Failed to start metrics server", "error", err)
 		}
 	},
 }
@@ -77,7 +84,7 @@ func Run(ctx context.Context) (string, error) {
 	}
 
 	//1. eth client
-	client, err := ethclient.Dial(viper.GetString(RPC_URL))
+	client, err := ethclient.Dial(viper.GetString(NodeChainRpc))
 	if err != nil {
 		slog.Error("failed to connect to the Ethereum client", "error", err)
 		return operatorAddress, err

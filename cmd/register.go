@@ -82,7 +82,7 @@ func Register(ctx context.Context) error {
 	}
 
 	//1. eth client
-	client, err := ethclient.Dial(viper.GetString(RPC_URL))
+	client, err := ethclient.Dial(viper.GetString(NodeChainRpc))
 	if err != nil {
 		slog.Error("failed to connect to the Ethereum client", "error", err)
 		return err
