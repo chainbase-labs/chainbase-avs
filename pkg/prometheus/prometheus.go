@@ -14,12 +14,14 @@ func init() {
 }
 
 var (
+	JOB_NAME = "chainbase-avs"
+
 	AvsInfo = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "avs_info",
 			Help: "AVS Info include: ip, hex_address, worker_memory_total_bytes, cpu model...",
 		},
-		[]string{"ip", "hex_address", "model", "worker_memory_total_bytes", "job_manager_status"},
+		[]string{"ip", "hex_address", "model", "worker_memory_total_bytes", "job_manager_status", "job"},
 	)
 
 	MemoryTotal = prometheus.NewGauge(
@@ -36,7 +38,7 @@ func UpdateHostMetrics(avsAddr string) {
 	cpuModel := GetCPUModel()
 	memTotal := GetTotalMemory()
 	flinkJobManagerStatus := GetFlinkJobManagerStatus()
-	AvsInfo.WithLabelValues(ip, avsAddr, cpuModel, fmt.Sprintf("%.2f", memTotal), flinkJobManagerStatus).Set(1)
+	AvsInfo.WithLabelValues(ip, avsAddr, cpuModel, fmt.Sprintf("%.2f", memTotal), flinkJobManagerStatus, JOB_NAME).Set(1)
 }
 
 func GetFlinkJobManagerStatus() string {
