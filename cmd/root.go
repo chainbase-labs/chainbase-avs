@@ -7,7 +7,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	// 导入生成的合约包
 )
 
 var (

@@ -17,7 +17,7 @@ func init() {
 }
 
 var (
-	JOB_NAME = "chainbase-avs"
+	jobName = "chainbase-avs"
 
 	AvsInfo = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -31,7 +31,7 @@ var (
 			Name: "worker_memory_total_bytes",
 			Help: "Total memory of the worker in bytes",
 		},
-		[]string{"hex_address"},
+		[]string{"hex_address", "job"},
 	)
 
 	JobManagerStatus = prometheus.NewGaugeVec(
@@ -39,7 +39,7 @@ var (
 			Name: "avs_job_manager_status",
 			Help: "Status of the AVS job manager (0 for inactive, 1 for active)",
 		},
-		[]string{"hex_address"},
+		[]string{"hex_address", "job"},
 	)
 )
 
@@ -49,16 +49,16 @@ func UpdateHostMetrics(avsAddr string) {
 	cpuModel := GetCPUModel()
 	memTotal := GetTotalMemory()
 	flinkJobManagerStatus := GetFlinkJobManagerStatus()
-	AvsInfo.WithLabelValues(ip, avsAddr, cpuModel, JOB_NAME).Set(1)
-	MemoryTotal.WithLabelValues(avsAddr).Set(memTotal)
-	JobManagerStatus.WithLabelValues(avsAddr).Set(flinkJobManagerStatus)
+	AvsInfo.WithLabelValues(ip, avsAddr, cpuModel, jobName).Set(1)
+	MemoryTotal.WithLabelValues(avsAddr, jobName).Set(memTotal)
+	JobManagerStatus.WithLabelValues(avsAddr, jobName).Set(flinkJobManagerStatus)
 }
 
 func GetFlinkJobManagerStatus() float64 {
 
 	flinkHostName := os.Getenv("FLINK_CONNECT_ADDRESS")
 	flinkHostPort := os.Getenv("FLINK_JOBMANAGER_PORT")
-	resp, err := http.Get((fmt.Sprintf("http://%s:%s/config", flinkHostName, flinkHostPort)))
+	resp, err := http.Get(fmt.Sprintf("http://%s:%s/config", flinkHostName, flinkHostPort))
 
 	if err != nil {
 
