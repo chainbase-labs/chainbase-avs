@@ -1,12 +1,13 @@
 package cmd
 
 const (
-	AVSContractAddress = "avs_contract_address"
-	AVSDirContractAddr = "avs_dir_contract_address"
-	RPC_URL            = "rpc_url"
+	AVSContractAddress = "AVS_CONTRACT_ADDRESS"
+	AVSDirContractAddr = "AVS_DIR_CONTRACT_ADDRESS"
+	NodeChainRpc       = "NODE_CHAIN_RPC"
 
-	OperatorConfigPath = "operator_config_path"
-	KeystorePassword   = "keystore_pwd"
+	OperatorKeystorePath = "NODE_ECDSA_KEY_FILE"
+	KeystorePassword     = "NODE_ECDSA_KEY_PASSWORD"
 
-	HealthCheckPort = 8080
+	NodeAppPort     = "NODE_APP_PORT"
+	NodeMetricsPort = "NODE_METRICS_PORT"
 )

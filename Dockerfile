@@ -21,4 +21,4 @@ WORKDIR /root/
 COPY --from=builder /app/main .
 RUN chmod +x main
 
-CMD ["./main","run"]
+ENTRYPOINT ["./main"]

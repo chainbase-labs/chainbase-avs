@@ -8,10 +8,8 @@ import (
 	"log"
 	"log/slog"
 	"math/big"
-	"os"
 	"time"
 
-	"cosmossdk.io/errors"
 	mc "github.com/chainbase-avs/cli/bindings"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,12 +19,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v2"
 
-	eigentypes "github.com/Layr-Labs/eigenlayer-cli/pkg/types"
-	eigenutils "github.com/Layr-Labs/eigenlayer-cli/pkg/utils"
 	eigenecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
-	eigensdktypes "github.com/Layr-Labs/eigensdk-go/types"
 )
 
 var registerCmd = &cobra.Command{
@@ -75,41 +69,20 @@ func makeAuth(client *ethclient.Client, privateKey *ecdsa.PrivateKey) (*bind.Tra
 	return auth, nil
 }
 
-// RegDeps contains the Register dependencies that are abstracted for testing.
-type RegDeps struct {
-	Prompter   eigenutils.Prompter
-	VerifyFunc func(eigensdktypes.Operator) error
-}
-
 func Register(ctx context.Context) error {
-
-	deps := RegDeps{
-		Prompter: eigenutils.NewPrompter(),
-		VerifyFunc: func(op eigensdktypes.Operator) error {
-			return op.Validate()
-		},
-	}
 
 	contractAddress := common.HexToAddress(viper.GetString(AVSContractAddress))
 	avsDirAddr := common.HexToAddress(viper.GetString(AVSDirContractAddr))
 
 	//0.read eigenlayer config to get ecdsa private key
-	eigenCfg, err := readConfig(viper.GetString(OperatorConfigPath))
-	if err != nil {
-		return err
-	} else if err := deps.VerifyFunc(eigenCfg.Operator); err != nil {
-		return err
-	}
-
-	password := viper.GetString(KeystorePassword)
 	//TODO: what if is smart contract
-	privateKey, err := eigenecdsa.ReadKey(eigenCfg.PrivateKeyStorePath, password)
+	privateKey, err := eigenecdsa.ReadKey(viper.GetString(OperatorKeystorePath), viper.GetString(KeystorePassword))
 	if err != nil {
 		return err
 	}
 
 	//1. eth client
-	client, err := ethclient.Dial(viper.GetString(RPC_URL))
+	client, err := ethclient.Dial(viper.GetString(NodeChainRpc))
 	if err != nil {
 		slog.Error("failed to connect to the Ethereum client", "error", err)
 		return err
@@ -215,20 +188,3 @@ func getTxFailureReason(client *ethclient.Client, tx *types.Transaction, blockNu
 }
 
 // readConfig returns the eigen-layer operator configuration from the given file.
-func readConfig(file string) (eigentypes.OperatorConfigNew, error) {
-	if _, err := os.Stat(file); os.IsNotExist(err) {
-		return eigentypes.OperatorConfigNew{}, errors.Wrap(err, "eigen config file not found")
-	}
-
-	bz, err := os.ReadFile(file)
-	if err != nil {
-		return eigentypes.OperatorConfigNew{}, errors.Wrap(err, "read eigen config file")
-	}
-
-	var config eigentypes.OperatorConfigNew
-	if err := yaml.Unmarshal(bz, &config); err != nil {
-		return eigentypes.OperatorConfigNew{}, errors.Wrap(err, "unmarshal eigen config file")
-	}
-
-	return config, nil
-}

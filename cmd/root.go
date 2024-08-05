@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"log"
+	"log/slog"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	// 导入生成的合约包
 )
 
 var (
@@ -28,7 +28,6 @@ func init() {
 	//toml config file
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "avs.toml", "config file")
 }
 
 func Execute() error {
@@ -37,21 +36,10 @@ func Execute() error {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-
-		viper.AddConfigPath(home)
-		viper.SetConfigType("toml")
-		viper.SetConfigName("." + "avs")
+	if _, err := os.Stat(".env"); err == nil {
+		slog.Info("load env from .env file")
+		_ = godotenv.Load()
 	}
-	err := viper.ReadInConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
+	viper.AutomaticEnv()
 
 }

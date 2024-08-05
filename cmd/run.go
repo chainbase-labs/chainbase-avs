@@ -3,10 +3,11 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -21,9 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	eigenutils "github.com/Layr-Labs/eigenlayer-cli/pkg/utils"
 	eigenecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
-	eigensdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	"github.com/chainbase-avs/cli/pkg/prometheus"
 )
@@ -39,10 +38,11 @@ var runCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		router := httprouter.New()
-		router.GET("/eigen/node/health", handleHealth)
+		appRouter := httprouter.New()
+		appRouter.GET("/eigen/node/health", handleHealth)
 
-		router.Handler("GET", "/metrics", promhttp.Handler())
+		metricsRouter := httprouter.New()
+		metricsRouter.Handler("GET", "/metrics", promhttp.Handler())
 
 		go func() {
 
@@ -55,10 +55,25 @@ var runCmd = &cobra.Command{
 
 		}()
 
-		err = http.ListenAndServe(fmt.Sprintf(":%d", HealthCheckPort), router)
-		if err != nil {
-			log.Println(err)
-		}
+		go func() {
+			err := http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt(NodeAppPort)), appRouter)
+			if err != nil {
+				slog.Error("Failed to start app server", "error", err)
+			}
+		}()
+
+		go func() {
+			err := http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt(NodeMetricsPort)), metricsRouter)
+			if err != nil {
+				slog.Error("Failed to start metrics server", "error", err)
+			}
+		}()
+
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		sig := <-sigChan
+		slog.Info("Received signal, shutting down", "signal", sig)
+
 	},
 }
 
@@ -70,32 +85,16 @@ func Run(ctx context.Context) (string, error) {
 
 	var operatorAddress string
 
-	deps := RegDeps{
-		Prompter: eigenutils.NewPrompter(),
-		VerifyFunc: func(op eigensdktypes.Operator) error {
-			return op.Validate()
-		},
-	}
-
 	contractAddress := common.HexToAddress(viper.GetString(AVSContractAddress))
 
-	//0.read eigenlayer config to get ecdsa private key
-	eigenCfg, err := readConfig(viper.GetString(OperatorConfigPath))
-	if err != nil {
-		return operatorAddress, err
-	} else if err := deps.VerifyFunc(eigenCfg.Operator); err != nil {
-		return operatorAddress, err
-	}
-
-	password := viper.GetString(KeystorePassword)
-
-	privateKey, err := eigenecdsa.ReadKey(eigenCfg.PrivateKeyStorePath, password)
+	//0.decode keystore get ecdsa private key
+	privateKey, err := eigenecdsa.ReadKey(viper.GetString(OperatorKeystorePath), viper.GetString(KeystorePassword))
 	if err != nil {
 		return operatorAddress, err
 	}
 
 	//1. eth client
-	client, err := ethclient.Dial(viper.GetString(RPC_URL))
+	client, err := ethclient.Dial(viper.GetString(NodeChainRpc))
 	if err != nil {
 		slog.Error("failed to connect to the Ethereum client", "error", err)
 		return operatorAddress, err
