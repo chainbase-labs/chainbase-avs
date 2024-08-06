@@ -1,14 +1,4 @@
-FROM golang:1.22 as builder
-
-WORKDIR /app
-
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
-
-FROM alpine:latest  
+FROM alpine:latest
 
 RUN apk --no-cache add \
     ca-certificates \
@@ -18,7 +8,10 @@ RUN apk --no-cache add \
 
 WORKDIR /root/
 
-COPY --from=builder /app/main .
-RUN chmod +x main
+COPY ./main_amd64 .
+COPY ./main_arm64 .
+COPY ./entrypoint.sh .
 
-ENTRYPOINT ["./main"]
+RUN chmod +x entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
