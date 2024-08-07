@@ -3,8 +3,6 @@ on:
   push:
     tags:
       - "v*"
-    branchs:
-      - main
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
