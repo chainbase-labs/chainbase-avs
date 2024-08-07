@@ -1,0 +1,40 @@
+name: chainbase-node Docker Image CI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-n-publish-to-ecr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.17.0"
+
+      - name: Login to ACR
+        uses: aliyun/acr-login@v1
+        with:
+          login-server: https://chainbase-registry.ap-southeast-1.cr.aliyuncs.com
+          region-id: "ap-southeast-1"
+          access-key-id: "${{ secrets.ALI_ACCESS_KEY_ID }}"
+          access-key-secret: "${{ secrets.ALI_ACCESS_KEY_SECRET }}"
+          instance-id: "cri-a4wmsz77ru5o7hub"
+
+      - name: Build, tag, and push docker image to ACR
+        env:
+          REGISTRY: chainbase-registry.ap-southeast-1.cr.aliyuncs.com/network
+          REPOSITORY: chainbase-node
+          IMAGE_TAG: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 -t $REGISTRY/$REPOSITORY:$IMAGE_TAG . && docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
