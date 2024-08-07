@@ -1,15 +1,17 @@
-#!/bin/bash
+#!/bin/sh
 
-/opt/chainbase-cli run --config /opt/avs.toml
+# Detect system architecture
+ARCH=$(uname -m)
 
-if [ $? -eq 0 ]; then
-    echo "Signature verification passed. Starting Flink..."
-    # Start Flink
-    /opt/flink/bin/start-cluster.sh
-    
-    # Keep the container running
-    tail -f /dev/null
+# Select the appropriate binary
+if [ "$ARCH" = "x86_64" ]; then
+    EXEC="./main_amd64"
+elif [ "$ARCH" = "aarch64" ]; then
+    EXEC="./main_arm64"
 else
-    echo "Signature verification failed. Exiting..."
+    echo "Unsupported architecture: $ARCH"
     exit 1
 fi
+
+# Run the selected binary with all passed arguments
+exec $EXEC "$@"
