@@ -34,6 +34,7 @@ contract AVS is IAVS, OwnableUpgradeable, AVSStorage {
         if (bytes(metadataURI_).length > 0) {
             _avsDirectory.updateAVSMetadataURI(metadataURI_);
         }
+        __Ownable_init();
     }
 
     /// ************ view function ************ ///
@@ -72,7 +73,7 @@ contract AVS is IAVS, OwnableUpgradeable, AVSStorage {
         emit OperatorAdded(operator);
     }
 
-    function UpdateMetadataURI(string calldata metadataURI) external {
+    function UpdateMetadataURI(string calldata metadataURI) external onlyOwner {
         _avsDirectory.updateAVSMetadataURI(metadataURI);
     }
 

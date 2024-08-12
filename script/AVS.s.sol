@@ -28,7 +28,7 @@ contract DeployAVS is Script {
         AVS avs = deploy();
 
         vm.stopBroadcast();
-        console.log("OmniAVS deployed at: ", address(avs));
+        console.log("AVS deployed at: ", address(avs));
         console.log("Implementation: ", _impl);
         console.log("Implementation Constructor Args: ");
         console.logBytes(_implConstructorArgs);
