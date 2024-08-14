@@ -19,6 +19,3 @@ avs.toml
 
 operator.yaml
 *.ecdsa.key.json
-
-./main_amd64
-./main_arm64
