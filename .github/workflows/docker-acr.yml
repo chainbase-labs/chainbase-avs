@@ -1,0 +1,40 @@
+name: chainbase-node Docker Image CI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-image-push-to-aliyun:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to ACR
+        uses: aliyun/acr-login@v1
+        with:
+          login-server: https://chainbase-registry.ap-southeast-1.cr.aliyuncs.com
+          region-id: "ap-southeast-1"
+          access-key-id: "${{ secrets.ALI_ACCESS_KEY_ID }}"
+          access-key-secret: "${{ secrets.ALI_ACCESS_KEY_SECRET }}"
+          instance-id: "cri-a4wmsz77ru5o7hub"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: chainbase-registry.ap-southeast-1.cr.aliyuncs.com/network/chainbase-node:${{ steps.get_version.outputs.VERSION }}
