@@ -4,14 +4,12 @@ pragma solidity = 0.8.24;
 import "@eigenlayer/contracts/permissions/Pausable.sol";
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
 import "@eigenlayer-middleware/src/BLSSignatureChecker.sol";
-import "@eigenlayer-middleware/src/OperatorStateRetriever.sol";
 
 import "./ChainbaseServiceManagerStorage.sol";
 
 contract ChainbaseServiceManager is
     Pausable,
     BLSSignatureChecker,
-    OperatorStateRetriever,
     ServiceManagerBase,
     ChainbaseServiceManagerStorage
 {
@@ -23,6 +21,14 @@ contract ChainbaseServiceManager is
      */
     modifier onlyAggregator() {
         require(msg.sender == aggregator, "ChainbaseServiceManager: aggregator must be the caller");
+        _;
+    }
+
+    /**
+     * @dev Modifier to restrict function calls to the generator only
+     */
+    modifier onlyGenerator() {
+        require(msg.sender == generator, "ChainbaseServiceManager: generator must be the caller");
         _;
     }
 
@@ -77,7 +83,7 @@ contract ChainbaseServiceManager is
         string calldata taskDescription,
         uint32 quorumThresholdPercentage,
         bytes calldata quorumNumbers
-    ) external override {
+    ) external override onlyGenerator {
         // create a new task struct
         Task memory newTask;
         newTask.taskDescription = taskDescription;

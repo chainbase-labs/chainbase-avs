@@ -15,5 +15,5 @@ remappings.txt
 
 data/
 
-script/output/*
-script/eigenda_deploy_config.json
+!/script/output
+script/output/31337/

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.12;
 
 import {Script, console} from "forge-std/Script.sol";
-import {AVS} from "../src/deprecated/AVS.sol";
+import {AVS} from "../../src/deprecated/AVS.sol";
 import {IDelegationManager} from "@eigenlayer/contracts/interfaces/IDelegationManager.sol";
 import {IAVSDirectory} from "@eigenlayer/contracts/interfaces/IAVSDirectory.sol";
 
