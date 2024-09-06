@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity = 0.8.24;
 
-import "@eigenlayer/contracts/permissions/Pausable.sol";
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
 import "@eigenlayer-middleware/src/BLSSignatureChecker.sol";
 
 import "./ChainbaseServiceManagerStorage.sol";
 
-contract ChainbaseServiceManager is
-    Pausable,
-    BLSSignatureChecker,
-    ServiceManagerBase,
-    ChainbaseServiceManagerStorage
-{
+contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, ChainbaseServiceManagerStorage {
     //=========================================================================
     //                                MODIFIERS
     //=========================================================================
@@ -55,18 +49,32 @@ contract ChainbaseServiceManager is
     //=========================================================================
     /**
      * @dev Initialize function to set the initial owner and other contract addresses
-     * @param _pauserRegistry Address of the PauserRegistry
      * @param initialOwner Address of the initial owner
      * @param _aggregator Address of the aggregator
      * @param _generator Address of the generator
      */
-    function initialize(IPauserRegistry _pauserRegistry, address initialOwner, address _aggregator, address _generator)
-        public
-        initializer
-    {
-        _initializePauser(_pauserRegistry, UNPAUSE_ALL);
+    function initialize(address initialOwner, address _aggregator, address _generator) public initializer {
         __ServiceManagerBase_init(initialOwner);
         aggregator = _aggregator;
+        generator = _generator;
+    }
+
+    //=========================================================================
+    //                                 MANAGE
+    //=========================================================================
+    /**
+     * @dev Sets the aggregator.
+     * @param _aggregator The address of the aggregator.
+     */
+    function setAggregator(address _aggregator) external onlyOwner {
+        aggregator = _aggregator;
+    }
+
+    /**
+     * @dev Sets the generator.
+     * @param _generator The address of the generator.
+     */
+    function setGenerator(address _generator) external onlyOwner {
         generator = _generator;
     }
 
@@ -75,18 +83,18 @@ contract ChainbaseServiceManager is
     //=========================================================================
     /**
      * @notice External function to create a new task
-     * @param taskDescription Description of the task
+     * @param taskDetails Details of the task
      * @param quorumThresholdPercentage Threshold percentage for quorum
      * @param quorumNumbers List of quorum numbers
      */
-    function createNewTask(
-        string calldata taskDescription,
-        uint32 quorumThresholdPercentage,
-        bytes calldata quorumNumbers
-    ) external override onlyGenerator {
+    function createNewTask(string calldata taskDetails, uint32 quorumThresholdPercentage, bytes calldata quorumNumbers)
+        external
+        override
+        onlyGenerator
+    {
         // create a new task struct
         Task memory newTask;
-        newTask.taskDescription = taskDescription;
+        newTask.taskDetails = taskDetails;
         newTask.taskCreatedBlock = uint32(block.number);
         newTask.quorumThresholdPercentage = quorumThresholdPercentage;
         newTask.quorumNumbers = quorumNumbers;
@@ -98,17 +106,6 @@ contract ChainbaseServiceManager is
     }
 
     /**
-     * @notice Returns the current 'taskNumber' of the middleware
-     * @return The current task number
-     */
-    function taskNumber() external view override returns (uint32) {
-        return latestTaskNum;
-    }
-
-    //=========================================================================
-    //                                AGGREGATOR
-    //=========================================================================
-    /**
      * @notice External function to respond to existing tasks
      * @param task Task struct containing task details
      * @param taskResponse Task response struct containing the response details
@@ -118,7 +115,7 @@ contract ChainbaseServiceManager is
         Task calldata task,
         TaskResponse calldata taskResponse,
         NonSignerStakesAndSignature memory nonSignerStakesAndSignature
-    ) external onlyAggregator {
+    ) external override onlyAggregator {
         uint32 taskCreatedBlock = task.taskCreatedBlock;
         bytes calldata quorumNumbers = task.quorumNumbers;
         uint32 quorumThresholdPercentage = task.quorumThresholdPercentage;
@@ -161,5 +158,13 @@ contract ChainbaseServiceManager is
 
         // emitting event
         emit TaskResponded(taskResponse, taskResponseMetadata);
+    }
+
+    /**
+     * @notice Returns the current 'taskNumber' of the middleware
+     * @return The current task number
+     */
+    function taskNumber() external view override returns (uint32) {
+        return latestTaskNum;
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity = 0.8.24;
 
-import {IChainbaseServiceManager} from "./interface/IChainbaseServiceManager.sol";
+import {IChainbaseServiceManager} from "./IChainbaseServiceManager.sol";
 
 abstract contract ChainbaseServiceManagerStorage is IChainbaseServiceManager {
     //=========================================================================
@@ -9,7 +9,6 @@ abstract contract ChainbaseServiceManagerStorage is IChainbaseServiceManager {
     //=========================================================================
     // The number of blocks from the task initialization within which the aggregator has to respond to
     uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 100;
-    uint32 public constant TASK_CHALLENGE_WINDOW_BLOCK = 100;
     uint256 internal constant _THRESHOLD_DENOMINATOR = 100;
 
     //=========================================================================

@@ -19,6 +19,7 @@ contract ChainbaseServiceManagerDeployer is Script {
     address public multiSigManager;
     address public aggregator;
     address public generator;
+    IStrategy[] public deployedStrategyArray;
 
     ProxyAdmin public proxyAdmin;
     PauserRegistry public pauserRegistry;
@@ -51,6 +52,18 @@ contract ChainbaseServiceManagerDeployer is Script {
 
         address delegationManager = vm.envAddress("DELEGATION_MANAGER");
         address avsDirectory = vm.envAddress("AVS_DIRECTORY");
+
+        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.cbETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.stETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.rETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.ETHxStrategy));
+        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.ankrETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.osETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.sfrxETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.LsETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.mETHSTrategy));
+        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.beaconETHStrategy));
+
         _deployChainbaseServiceManagerContracts(IDelegationManager(delegationManager), IAVSDirectory(avsDirectory));
 
         vm.stopBroadcast();
@@ -59,7 +72,6 @@ contract ChainbaseServiceManagerDeployer is Script {
     function _deployChainbaseServiceManagerContracts(IDelegationManager delegationManager, IAVSDirectory avsDirectory)
         internal
     {
-        IStrategy[1] memory deployedStrategyArray = [IStrategy(EigenHoleSkyDeployments.cbETHStrategy)];
         uint256 numStrategies = deployedStrategyArray.length;
 
         // deploy proxy admin for ability to upgrade proxy contracts
@@ -184,9 +196,7 @@ contract ChainbaseServiceManagerDeployer is Script {
         proxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(payable(address(chainbaseServiceManagerProxy))),
             address(chainbaseServiceManagerImplementation),
-            abi.encodeWithSelector(
-                ChainbaseServiceManager.initialize.selector, pauserRegistry, multiSigManager, aggregator, generator
-            )
+            abi.encodeWithSelector(ChainbaseServiceManager.initialize.selector, multiSigManager, aggregator, generator)
         );
 
         // WRITE JSON DATA

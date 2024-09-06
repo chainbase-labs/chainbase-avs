@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity = 0.8.24;
 
-import "@eigenlayer-middleware/src/libraries/BN254.sol";
+import "@eigenlayer-middleware/src/interfaces/IBLSSignatureChecker.sol";
 
 interface IChainbaseServiceManager {
     //=========================================================================
@@ -13,15 +13,11 @@ interface IChainbaseServiceManager {
 
     event TaskCompleted(uint32 indexed taskIndex);
 
-    event TaskChallengedSuccessfully(uint32 indexed taskIndex, address indexed challenger);
-
-    event TaskChallengedUnsuccessfully(uint32 indexed taskIndex, address indexed challenger);
-
     //=========================================================================
     //                                STRUCTS
     //=========================================================================
     struct Task {
-        string taskDescription;
+        string taskDetails;
         uint32 taskCreatedBlock;
         bytes quorumNumbers;
         uint32 quorumThresholdPercentage;
@@ -47,13 +43,14 @@ interface IChainbaseServiceManager {
     //=========================================================================
     //                                FUNCTIONS
     //=========================================================================
-    // NOTE: this function creates new task.
-    function createNewTask(
-        string calldata taskDescription,
-        uint32 quorumThresholdPercentage,
-        bytes calldata quorumNumbers
+    function createNewTask(string calldata taskDetails, uint32 quorumThresholdPercentage, bytes calldata quorumNumbers)
+        external;
+
+    function respondToTask(
+        Task calldata task,
+        TaskResponse calldata taskResponse,
+        IBLSSignatureChecker.NonSignerStakesAndSignature memory nonSignerStakesAndSignature
     ) external;
 
-    /// @notice Returns the current 'taskNumber' for the middleware
     function taskNumber() external view returns (uint32);
 }
