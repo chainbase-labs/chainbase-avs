@@ -5,22 +5,18 @@ libs = ["lib"]
 
 solc-version = "0.8.24"
 optimizer = true
-optimizer-runs = 10_000_000
+optimizer-runs = 200
+via_ir = false
 
-remappings = [
-    "@eigenlayer/=lib/eigenlayer-middleware/lib/eigenlayer-contracts/src/",
-    "@eigenlayer-scripts/=lib/eigenlayer-middleware/lib/eigenlayer-contracts/script/",
-    "@eigenlayer-middleware/=lib/eigenlayer-middleware/",
-    "@openzeppelin/=lib/openzeppelin-contracts/",
-    "@openzeppelin-upgrades/=lib/eigenlayer-middleware/lib/eigenlayer-contracts/lib/openzeppelin-contracts-upgradeable/",
-    "forge-std/=lib/forge-std/src/"
-]
+gas_reports = ["*"]
+
+fs_permissions = [{ access = "read-write", path = "./" }]
+ignored_warnings_from = ["lib"]
 
 [rpc_endpoints]
 holesky = "${HOLESKY_RPC_URL}"
 
 [etherscan]
-holesky = { key = "${HOLESKY_ETHERSCAN_API_KEY}" }
-
+holesky = { key = "${ETHERSCAN_API_KEY}" }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

@@ -1,8 +1,8 @@
 pragma solidity ^0.8.12;
 
 import {IStrategy} from "@eigenlayer/contracts/interfaces/IStrategy.sol";
-import {IAVS} from "../src/interface/IAVS.sol";
-import {EigenMainnetDeployments, EigenHoleSkyDeployments} from "./EigenDeployments.s.sol";
+import {IAVS} from "../../src/deprecated/interface/IAVS.sol";
+import {EigenMainnetDeployments, EigenHoleSkyDeployments} from "../EigenDeployments.s.sol";
 
 library StrategyParams {
     uint96 public constant STD_MULTIPLIER = 1e18;

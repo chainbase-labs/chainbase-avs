@@ -8,13 +8,12 @@ out/
 /broadcast/*/40525/
 /broadcast/**/dry-run/
 
-# Docs
-docs/
+remappings.txt
 
 # Dotenv file
 .env
 
 data/
 
-script/output/*
-script/eigenda_deploy_config.json
+!/script/output
+script/output/31337/
