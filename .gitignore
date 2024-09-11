@@ -7,3 +7,6 @@ coverage.out
 
 # Misc
 **/.DS_Store
+
+# Config file
+/config-files/*.yaml

@@ -1,0 +1,17 @@
+{
+  "addresses": {
+    "blsApkRegistryImplementation": "0xaf5b82390C1fA6b451c28176e9A60DC1A00529B8",
+    "blsApkRegistryProxy": "0xf9e64168901dbEcA17a3dDe80Bd184e12f46853a",
+    "chainbaseServiceManagerImplementation": "0x4b3050EcF4B77f228e4518F3d1a0A41c78D084D3",
+    "chainbaseServiceManagerProxy": "0x0fb6b02F8482a06CF1d99558576F111abC377932",
+    "indexRegistryImplementation": "0x2faFA82475b1278DB1445a4Af7ac4e790B854883",
+    "indexRegistryProxy": "0xB7aCf43E3A614b10d7Ac3E4082f30730DfeC64EE",
+    "operatorStateRetriever": "0x3e302917A4d007eAF367c182226Da217E9639d38",
+    "pauserRegistry": "0xf093DBb28ae1CDA2c04A9398A9148ACA7dC3A445",
+    "proxyAdmin": "0xa92C5cb01fFa4B077Cc4AeA9d4fc67B622D97feD",
+    "registryCoordinator": "0xb8B9351a6D21fd9b3249713353ACf430BE2e6bBc",
+    "registryCoordinatorImplementation": "0x606beE41FaeB30618d6378e875175b798c23e0D0",
+    "stakeRegistryImplementation": "0x2dbFAC7bdAE9914EB7FBc8951e4D6807377a0dFf",
+    "stakeRegistryProxy": "0x076B775b2b32740B69ae8DCA1ade674BD8049231"
+  }
+}

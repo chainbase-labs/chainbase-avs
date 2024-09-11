@@ -10,7 +10,7 @@ import (
 	"math/big"
 	"time"
 
-	mc "github.com/chainbase-avs/cli/contracts/bindings"
+	eigenecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	eigenecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
+	"github.com/chainbase-labs/chainbase-avs/contracts/bindings/deprecated"
 )
 
 var registerCmd = &cobra.Command{
@@ -89,12 +89,12 @@ func Register(ctx context.Context) error {
 	}
 
 	//2. create contract binding avsInstance
-	avsInstance, err := mc.NewIAVS(contractAddress, client)
+	avsInstance, err := deprecated.NewIAVS(contractAddress, client)
 	if err != nil {
 		slog.Error("failed to create a AVS binding instance", "error", err)
 		return err
 	}
-	avsDirInstance, err := mc.NewIAVSDirectory(avsDirAddr, client)
+	avsDirInstance, err := deprecated.NewIAVSDirectory(avsDirAddr, client)
 	if err != nil {
 		slog.Error("failed to create a AVSDir binding instance", "error", err)
 		return err
@@ -137,7 +137,7 @@ func Register(ctx context.Context) error {
 	slog.Debug("expiry", "expiry", expiry)
 
 	// 5. register
-	tx, err := avsInstance.RegisterOperator(auth, mc.ISignatureUtilsSignatureWithSaltAndExpiry{
+	tx, err := avsInstance.RegisterOperator(auth, deprecated.ISignatureUtilsSignatureWithSaltAndExpiry{
 		Signature: signature,
 		Salt:      salt,
 		Expiry:    expiry,

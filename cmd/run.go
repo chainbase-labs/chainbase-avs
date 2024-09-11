@@ -10,21 +10,19 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	mc "github.com/chainbase-avs/cli/contracts/bindings"
+	eigenecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/julienschmidt/httprouter"
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	eigenecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
-
-	"github.com/chainbase-avs/cli/pkg/prometheus"
+	mc "github.com/chainbase-labs/chainbase-avs/contracts/bindings/deprecated"
+	"github.com/chainbase-labs/chainbase-avs/pkg/prometheus"
 )
 
 var runCmd = &cobra.Command{
