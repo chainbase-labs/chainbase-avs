@@ -1,11 +1,11 @@
-package main
+package actions
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"os"
 
+	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/urfave/cli"
 
@@ -14,28 +14,14 @@ import (
 	"github.com/chainbase-labs/chainbase-avs/node/types"
 )
 
-func main() {
-	app := cli.NewApp()
-	app.Flags = []cli.Flag{config.ConfigFileFlag}
-	app.Name = "chainbase-manuscript-node"
-	app.Usage = "Chainbase Manuscript Node"
-	app.Description = "This is a service run by operator. It receives tasks from coordinator, calculate, signs, and sends result to coordinator."
-
-	app.Action = nodeMain
-	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatalln("Manuscript run failed.", "Message:", err)
-	}
-}
-
-func nodeMain(ctx *cli.Context) error {
-	log.Println("Initializing manuscript node")
+func RegisterOperatorWithAvs(ctx *cli.Context) error {
 	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
 	nodeConfig := types.NodeConfig{}
 	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {
 		return err
 	}
+
 	configJson, err := json.MarshalIndent(nodeConfig, "", "  ")
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -46,15 +32,23 @@ func nodeMain(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Println("initialized manuscript node")
 
-	log.Println("starting manuscript node")
-	err = manuscriptNode.Start(context.Background())
+	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
+	if !ok {
+		log.Printf("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
+	}
+	operatorEcdsaPrivKey, err := sdkecdsa.ReadKey(
+		nodeConfig.EcdsaPrivateKeyStorePath,
+		ecdsaKeyPassword,
+	)
 	if err != nil {
 		return err
 	}
-	log.Println("started manuscript node")
+
+	err = manuscriptNode.RegisterOperatorWithAvs(operatorEcdsaPrivKey)
+	if err != nil {
+		return err
+	}
 
 	return nil
-
 }

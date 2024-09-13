@@ -8,39 +8,10 @@ import (
 	"fmt"
 	"math/big"
 
-	regcoord "github.com/Layr-Labs/eigensdk-go/contracts/bindings/RegistryCoordinator"
-	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	eigenSdkTypes "github.com/Layr-Labs/eigensdk-go/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 )
-
-func (n *ManuscriptNode) registerOperatorOnStartup(
-	operatorEcdsaPrivateKey *ecdsa.PrivateKey,
-	mockTokenStrategyAddr common.Address,
-) {
-	err := n.RegisterOperatorWithEigenlayer()
-	if err != nil {
-		// This error might only be that the operator was already registered with eigenlayer, so we don't want to fatal
-		n.logger.Error("Error registering operator with eigenlayer", "err", err)
-	} else {
-		n.logger.Infof("Registered operator with eigenlayer")
-	}
-
-	// TODO(samlaf): shouldn't hardcode number here
-	amount := big.NewInt(1000)
-	err = n.DepositIntoStrategy(mockTokenStrategyAddr, amount)
-	if err != nil {
-		n.logger.Fatal("Error depositing into strategy", "err", err)
-	}
-	n.logger.Infof("Deposited %s into strategy %s", amount, mockTokenStrategyAddr)
-
-	err = n.RegisterOperatorWithAvs(operatorEcdsaPrivateKey)
-	if err != nil {
-		n.logger.Fatal("Error registering operator with avs", "err", err)
-	}
-	n.logger.Infof("Registered operator with avs")
-}
 
 func (n *ManuscriptNode) RegisterOperatorWithEigenlayer() error {
 	op := eigenSdkTypes.Operator{
@@ -52,6 +23,8 @@ func (n *ManuscriptNode) RegisterOperatorWithEigenlayer() error {
 		n.logger.Error("Error registering operator with eigenlayer", "err", err)
 		return err
 	}
+	n.logger.Infof("Registered operator with eigenlayer")
+
 	return nil
 }
 
@@ -83,16 +56,18 @@ func (n *ManuscriptNode) DepositIntoStrategy(strategyAddr common.Address, amount
 		n.logger.Error("Error depositing into strategy", "err", err)
 		return err
 	}
+	n.logger.Infof("Deposited %s into strategy %s", amount, strategyAddr)
+
 	return nil
 }
 
-// Registration specific functions
+// RegisterOperatorWithAvs Registration specific functions
 func (n *ManuscriptNode) RegisterOperatorWithAvs(
 	operatorEcdsaKeyPair *ecdsa.PrivateKey,
 ) error {
 	// hardcode these things for now
 	quorumNumbers := eigenSdkTypes.QuorumNums{eigenSdkTypes.QuorumNum(0)}
-	socket := "Not Needed"
+	socket := n.nodeServerIpPortAddr
 	operatorToAvsRegistrationSigSalt := [32]byte{123}
 	curBlockNum, err := n.ethClient.BlockNumber(context.Background())
 	if err != nil {
@@ -120,19 +95,7 @@ func (n *ManuscriptNode) RegisterOperatorWithAvs(
 	return nil
 }
 
-// PRINTING STATUS OF OPERATOR: 1
-// operator address: 0xa0ee7a142d267c1f36714e4a8f75612f20a79720
-// dummy token balance: 0
-// delegated shares in dummyTokenStrat: 200
-// operator pubkey hash in AVS pubkey compendium (0 if not registered): 0x4b7b8243d970ff1c90a7c775c008baad825893ec6e806dfa5d3663dc093ed17f
-// operator is opted in to eigenlayer: true
-// operator is opted in to playgroundAVS (aka can be slashed): true
-// operator status in AVS registry: REGISTERED
-//
-//	operatorId: 0x4b7b8243d970ff1c90a7c775c008baad825893ec6e806dfa5d3663dc093ed17f
-//	middlewareTimesLen (# of stake updates): 0
-//
-// operator is frozen: false
+// OperatorStatus print status of operator
 type OperatorStatus struct {
 	EcdsaAddress string
 	// pubkey compendium related
@@ -166,11 +129,4 @@ func (n *ManuscriptNode) PrintOperatorStatus() error {
 	}
 	fmt.Println(string(operatorStatusJson))
 	return nil
-}
-
-func pubKeyG1ToBN254G1Point(p *bls.G1Point) regcoord.BN254G1Point {
-	return regcoord.BN254G1Point{
-		X: p.X.BigInt(new(big.Int)),
-		Y: p.Y.BigInt(new(big.Int)),
-	}
 }

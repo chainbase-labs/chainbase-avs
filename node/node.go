@@ -54,6 +54,9 @@ type ManuscriptNode struct {
 	newTaskCreatedChan chan *bindings.ChainbaseServiceManagerNewTaskCreated
 	// ip address of coordinator
 	coordinatorServerIpPortAddr string
+	// nodeServerIpPortAddr is the IP address and port of the Node gRPC server.
+	// This public address is submitted to the contract during the RegisterOperatorWithAvs and can be requested by the coordinator.
+	nodeServerIpPortAddr string
 	// rpc client to send signed task responses to coordinator
 	coordinatorRpcClient CoordinatorRpcClienter
 	// needed when opting in to avs (allow this service manager contract to slash operator)
@@ -213,6 +216,7 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 		blsKeypair:                         blsKeyPair,
 		operatorAddr:                       common.HexToAddress(c.OperatorAddress),
 		coordinatorServerIpPortAddr:        c.CoordinatorServerIpPortAddress,
+		nodeServerIpPortAddr:               c.NodeServerIpPortAddress,
 		coordinatorRpcClient:               coordinatorRpcClient,
 		newTaskCreatedChan:                 make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
 		credibleSquaringServiceManagerAddr: common.HexToAddress(c.AVSRegistryCoordinatorAddress),
@@ -300,6 +304,7 @@ func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.Ch
 		"quorumNumbers", newTaskCreatedLog.Task.QuorumNumbers,
 		"QuorumThresholdPercentage", newTaskCreatedLog.Task.QuorumThresholdPercentage,
 	)
+	//TODO
 	response := ""
 	taskResponse := &bindings.IChainbaseServiceManagerTaskResponse{
 		ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
