@@ -69,6 +69,9 @@ type Coordinator struct {
 	logger           logging.Logger
 	serverIpPortAddr string
 	avsWriter        chainio.IAvsWriter
+	avsSubscriber    chainio.IAvsSubscriber
+	// receive new tasks in this chan (typically from listening to onchain event)
+	newTaskCreatedChan chan *bindings.ChainbaseServiceManagerNewTaskCreated
 	// aggregation related fields
 	blsAggregationService blsagg.BlsAggregationService
 	tasks                 map[types.TaskIndex]bindings.IChainbaseServiceManagerTask
@@ -88,6 +91,14 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 	avsWriter, err := chainio.BuildAvsWriterFromConfig(c)
 	if err != nil {
 		c.Logger.Error("Cannot create avsWriter", "err", err)
+		return nil, err
+	}
+
+	avsSubscriber, err := chainio.BuildAvsSubscriber(c.RegistryCoordinatorAddr,
+		c.OperatorStateRetrieverAddr, c.EthWsClient, c.Logger,
+	)
+	if err != nil {
+		c.Logger.Error("Cannot create AvsSubscriber", "err", err)
 		return nil, err
 	}
 
@@ -118,10 +129,14 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 	avsRegistryService := avsregistry.NewAvsRegistryServiceChainCaller(avsReader, operatorPubkeysService, c.Logger)
 	blsAggregationService := blsagg.NewBlsAggregatorService(avsRegistryService, hashFunction, c.Logger)
 
+	//TODO
+
+	//avsRegistryService.GetOperatorsAvsStateAtBlock()
 	return &Coordinator{
 		logger:                c.Logger,
 		serverIpPortAddr:      c.CoordinatorServerIpPortAddr,
 		avsWriter:             avsWriter,
+		avsSubscriber:         avsSubscriber,
 		blsAggregationService: blsAggregationService,
 		tasks:                 make(map[types.TaskIndex]bindings.IChainbaseServiceManagerTask),
 		taskResponses:         make(map[types.TaskIndex]map[sdktypes.TaskResponseDigest]bindings.IChainbaseServiceManagerTaskResponse),
@@ -138,6 +153,9 @@ func (c *Coordinator) Start(ctx context.Context) error {
 		}
 	}()
 
+	// subscribe to onchain event
+	sub := c.avsSubscriber.SubscribeToNewTasks(c.newTaskCreatedChan)
+	// ticker for creating new task
 	ticker := time.NewTicker(2 * time.Hour)
 	c.logger.Infof("Coordinator set to send new task every 2 hours")
 	defer ticker.Stop()
@@ -148,17 +166,29 @@ func (c *Coordinator) Start(ctx context.Context) error {
 
 	for {
 		select {
-		case <-ctx.Done():
-			return nil
-		case blsAggServiceResp := <-c.blsAggregationService.GetResponseChannel():
-			c.logger.Info("Received response from blsAggregationService", "blsAggServiceResp", blsAggServiceResp)
-			c.sendAggregatedResponseToContract(blsAggServiceResp)
 		case <-ticker.C:
 			err := c.sendNewTask(taskDetails)
 			if err != nil {
 				// we log the errors inside sendNewTask() so here we just continue to the next task
 				continue
 			}
+		case err := <-sub.Err():
+			c.logger.Error("Error in websocket subscription", "err", err)
+			sub.Unsubscribe()
+			sub = c.avsSubscriber.SubscribeToNewTasks(c.newTaskCreatedChan)
+		case newTaskCreatedLog := <-c.newTaskCreatedChan:
+
+			//coordinatorRpcClient, err := NewManuscriptRpcClient(, logger, avsAndEigenMetrics)
+			//if err != nil {
+			//	logger.Error("Cannot create CoordinatorRpcClient. Is coordinator running?", "err", err)
+			//	return nil, err
+			//}
+
+		case blsAggServiceResp := <-c.blsAggregationService.GetResponseChannel():
+			c.logger.Info("Received response from blsAggregationService", "blsAggServiceResp", blsAggServiceResp)
+			c.sendAggregatedResponseToContract(blsAggServiceResp)
+		case <-ctx.Done():
+			return nil
 		}
 	}
 }

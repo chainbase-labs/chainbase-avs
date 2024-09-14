@@ -3,13 +3,13 @@ package coordinator
 import (
 	"context"
 	"errors"
-	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"net"
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	"github.com/Layr-Labs/eigensdk-go/types"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 	coordinatorpb "github.com/chainbase-labs/chainbase-avs/api/grpc/coordinator"
+	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fp"
 	"google.golang.org/grpc"
 

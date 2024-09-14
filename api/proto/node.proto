@@ -1,0 +1,26 @@
+// protoc --go_out=../grpc --go-grpc_out=../grpc node.proto
+syntax = "proto3";
+
+package node;
+
+option go_package = "node/";
+
+service ManuscriptNodeService {
+  rpc ReceiveNewTask (NewTaskRequest) returns (NewTaskResponse) {}
+}
+
+message NewTaskRequest {
+  uint32 task_index = 1;
+  Task task = 2;
+}
+
+message Task {
+  string task_details = 1;
+  uint32 task_created_block = 2;
+  bytes quorum_numbers = 3;
+  uint32 quorum_threshold_percentage = 4;
+}
+
+message NewTaskResponse {
+  bool success = 1;
+}

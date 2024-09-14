@@ -25,6 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	coordinatorpb "github.com/chainbase-labs/chainbase-avs/api/grpc/coordinator"
+	nodepb "github.com/chainbase-labs/chainbase-avs/api/grpc/node"
 	"github.com/chainbase-labs/chainbase-avs/contracts/bindings"
 	"github.com/chainbase-labs/chainbase-avs/core"
 	"github.com/chainbase-labs/chainbase-avs/core/chainio"
@@ -36,6 +37,7 @@ const AvsName = "chainbase"
 const SemVer = "0.0.1"
 
 type ManuscriptNode struct {
+	nodepb.UnimplementedManuscriptNodeServiceServer
 	config           types.NodeConfig
 	logger           logging.Logger
 	ethClient        eth.Client
@@ -44,7 +46,6 @@ type ManuscriptNode struct {
 	nodeApi          *nodeapi.NodeApi
 	avsWriter        *chainio.AvsWriter
 	avsReader        chainio.IAvsReader
-	avsSubscriber    chainio.IAvsSubscriber
 	eigenlayerReader sdkelcontracts.ELReader
 	eigenlayerWriter sdkelcontracts.ELWriter
 	blsKeypair       *bls.KeyPair
@@ -81,7 +82,7 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 	// Setup Node Api
 	nodeApi := nodeapi.NewNodeApi(AvsName, SemVer, c.NodeApiIpPortAddress, logger)
 
-	var ethRpcClient, ethWsClient eth.Client
+	var ethRpcClient eth.Client
 	if c.EnableMetrics {
 		rpcCallsCollector := rpccalls.NewCollector(AvsName, reg)
 		ethRpcClient, err = eth.NewInstrumentedClient(c.EthRpcUrl, rpcCallsCollector)
@@ -89,20 +90,10 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 			logger.Error("Cannot create http eth client", "err", err)
 			return nil, err
 		}
-		ethWsClient, err = eth.NewInstrumentedClient(c.EthWsUrl, rpcCallsCollector)
-		if err != nil {
-			logger.Error("Cannot create ws eth client", "err", err)
-			return nil, err
-		}
 	} else {
 		ethRpcClient, err = eth.NewClient(c.EthRpcUrl)
 		if err != nil {
 			logger.Error("Cannot create http eth client", "err", err)
-			return nil, err
-		}
-		ethWsClient, err = eth.NewClient(c.EthWsUrl)
-		if err != nil {
-			logger.Error("Cannot create ws eth client", "err", err)
 			return nil, err
 		}
 	}
@@ -177,14 +168,6 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 		logger.Error("Cannot create AvsReader", "err", err)
 		return nil, err
 	}
-	avsSubscriber, err := chainio.BuildAvsSubscriber(common.HexToAddress(c.AVSRegistryCoordinatorAddress),
-		common.HexToAddress(c.OperatorStateRetrieverAddress), ethWsClient, logger,
-	)
-	if err != nil {
-		logger.Error("Cannot create AvsSubscriber", "err", err)
-		return nil, err
-	}
-
 	// We must register the economic metrics separately because they are exported metrics (from jsonrpc or subgraph calls)
 	// and not instrumented metrics: see https://prometheus.io/docs/instrumenting/writing_clientlibs/#overall-structure
 	quorumNames := map[sdktypes.QuorumNum]string{
@@ -210,7 +193,6 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 		ethClient:                          ethRpcClient,
 		avsWriter:                          avsWriter,
 		avsReader:                          avsReader,
-		avsSubscriber:                      avsSubscriber,
 		eigenlayerReader:                   sdkClients.ElChainReader,
 		eigenlayerWriter:                   sdkClients.ElChainWriter,
 		blsKeypair:                         blsKeyPair,
@@ -255,6 +237,13 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 
 	n.logger.Infof("Starting operator.")
 
+	go func() {
+		err = n.startServer(ctx)
+		if err != nil {
+			n.logger.Error("Starting manuscript node rpc server error", "err", err)
+		}
+	}()
+
 	if n.config.EnableNodeApi {
 		n.nodeApi.Start()
 	}
@@ -265,22 +254,12 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 		metricsErrChan = make(chan error, 1)
 	}
 
-	// TODO(samlaf): wrap this call with increase in avs-node-spec metric
-	sub := n.avsSubscriber.SubscribeToNewTasks(n.newTaskCreatedChan)
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case err := <-metricsErrChan:
-			// TODO(samlaf); we should also register the service as unhealthy in the node api
-			// https://eigen.nethermind.io/docs/spec/api/
 			n.logger.Fatal("Error in metrics server", "err", err)
-		case err := <-sub.Err():
-			n.logger.Error("Error in websocket subscription", "err", err)
-			// TODO(samlaf): write unit tests to check if this fixed the issues we were seeing
-			sub.Unsubscribe()
-			// TODO(samlaf): wrap this call with increase in avs-node-spec metric
-			sub = n.avsSubscriber.SubscribeToNewTasks(n.newTaskCreatedChan)
 		case newTaskCreatedLog := <-n.newTaskCreatedChan:
 			n.metrics.IncNumTasksReceived()
 			taskResponse := n.ProcessNewTaskCreatedLog(newTaskCreatedLog)

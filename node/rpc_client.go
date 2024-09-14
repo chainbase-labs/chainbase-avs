@@ -59,16 +59,21 @@ func (c *CoordinatorRpcClient) SendSignedTaskResponseToCoordinator(signedTaskRes
 
 	c.logger.Info("Sending signed task response to coordinator", "signedTaskResponse", fmt.Sprintf("%#v", signedTaskResponse))
 	for i := 0; i < 5; i++ {
-		response, err := c.rpcClient.ProcessSignedTaskResponse(context.Background(), signedTaskResponse)
-		if err != nil && response.Success {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+
+		response, err := c.rpcClient.ProcessSignedTaskResponse(ctx, signedTaskResponse)
+		if err != nil {
 			c.logger.Info("Received error from coordinator", "err", err)
-		} else {
-			c.logger.Info("Signed task response header accepted by coordinator.")
+		}
+
+		if response.Success {
+			c.logger.Info("Signed task response accepted by coordinator.")
 			c.metrics.IncNumTasksAcceptedByCoordinator()
 			return
 		}
 		c.logger.Infof("Retrying in 2 seconds")
 		time.Sleep(2 * time.Second)
 	}
-	c.logger.Errorf("Could not send signed task response to coordinator. Tried 5 times.")
+	c.logger.Error("Could not send signed task response to coordinator. Tried 5 times.")
 }
