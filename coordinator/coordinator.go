@@ -2,12 +2,12 @@ package coordinator
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 	"time"
 
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"
+	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	"github.com/Layr-Labs/eigensdk-go/logging"
 	"github.com/Layr-Labs/eigensdk-go/services/avsregistry"
 	blsagg "github.com/Layr-Labs/eigensdk-go/services/bls_aggregation"
@@ -15,6 +15,7 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	coordinatorpb "github.com/chainbase-labs/chainbase-avs/api/grpc/coordinator"
+	nodepb "github.com/chainbase-labs/chainbase-avs/api/grpc/node"
 	"github.com/chainbase-labs/chainbase-avs/contracts/bindings"
 	"github.com/chainbase-labs/chainbase-avs/coordinator/types"
 	"github.com/chainbase-labs/chainbase-avs/core"
@@ -23,12 +24,7 @@ import (
 )
 
 const (
-	// number of blocks after which a task is considered expired
-	// this hardcoded here because it's also hardcoded in the contracts, but should
-	// ideally be fetched from the contracts
-	taskChallengeWindowBlock = 100
-	blockTime                = 12 * time.Second
-	avsName                  = "Chainbase"
+	avsName = "Chainbase"
 )
 
 // Coordinator sends tasks onchain, then listens for operator signed TaskResponses.
@@ -68,10 +64,13 @@ type Coordinator struct {
 	coordinatorpb.UnimplementedCoordinatorServiceServer
 	logger           logging.Logger
 	serverIpPortAddr string
+	ethClient        eth.Client
 	avsWriter        chainio.IAvsWriter
 	avsSubscriber    chainio.IAvsSubscriber
 	// receive new tasks in this chan (typically from listening to onchain event)
 	newTaskCreatedChan chan *bindings.ChainbaseServiceManagerNewTaskCreated
+	// avs registry service
+	avsRegistryService avsregistry.AvsRegistryService
 	// aggregation related fields
 	blsAggregationService blsagg.BlsAggregationService
 	tasks                 map[types.TaskIndex]bindings.IChainbaseServiceManagerTask
@@ -117,26 +116,27 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 	}
 
 	hashFunction := func(taskResponse sdktypes.TaskResponse) (sdktypes.TaskResponseDigest, error) {
-		taskResponseBytes, err := json.Marshal(taskResponse)
+		r := taskResponse.(bindings.IChainbaseServiceManagerTaskResponse)
+		taskResponseDigest, err := core.GetTaskResponseDigest(&r)
 		if err != nil {
 			return sdktypes.TaskResponseDigest{}, err
 		}
 
-		return sdktypes.TaskResponseDigest(taskResponseBytes), nil
+		return taskResponseDigest, nil
 	}
 
 	operatorPubkeysService := oprsinfoserv.NewOperatorsInfoServiceInMemory(context.Background(), chainClients.AvsRegistryChainSubscriber, chainClients.AvsRegistryChainReader, nil, c.Logger)
 	avsRegistryService := avsregistry.NewAvsRegistryServiceChainCaller(avsReader, operatorPubkeysService, c.Logger)
 	blsAggregationService := blsagg.NewBlsAggregatorService(avsRegistryService, hashFunction, c.Logger)
 
-	//TODO
-
-	//avsRegistryService.GetOperatorsAvsStateAtBlock()
 	return &Coordinator{
 		logger:                c.Logger,
 		serverIpPortAddr:      c.CoordinatorServerIpPortAddr,
+		ethClient:             chainClients.EthHttpClient,
 		avsWriter:             avsWriter,
 		avsSubscriber:         avsSubscriber,
+		newTaskCreatedChan:    make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
+		avsRegistryService:    avsRegistryService,
 		blsAggregationService: blsAggregationService,
 		tasks:                 make(map[types.TaskIndex]bindings.IChainbaseServiceManagerTask),
 		taskResponses:         make(map[types.TaskIndex]map[sdktypes.TaskResponseDigest]bindings.IChainbaseServiceManagerTaskResponse),
@@ -159,14 +159,23 @@ func (c *Coordinator) Start(ctx context.Context) error {
 	ticker := time.NewTicker(2 * time.Hour)
 	c.logger.Infof("Coordinator set to send new task every 2 hours")
 	defer ticker.Stop()
-	// TODO
-	taskDetails := ""
-	// ticker doesn't tick immediately, so we send the first task here
-	_ = c.sendNewTask(taskDetails)
+
+	taskDetails, err := c.createNewTask()
+	if err != nil {
+		c.logger.Error("Create new task error", "err", err)
+	} else {
+		// ticker doesn't tick immediately, so we send the first task here
+		_ = c.sendNewTask(taskDetails)
+	}
 
 	for {
 		select {
 		case <-ticker.C:
+			taskDetails, err = c.createNewTask()
+			if err != nil {
+				c.logger.Error("Create new task error", "err", err)
+				continue
+			}
 			err := c.sendNewTask(taskDetails)
 			if err != nil {
 				// we log the errors inside sendNewTask() so here we just continue to the next task
@@ -177,13 +186,10 @@ func (c *Coordinator) Start(ctx context.Context) error {
 			sub.Unsubscribe()
 			sub = c.avsSubscriber.SubscribeToNewTasks(c.newTaskCreatedChan)
 		case newTaskCreatedLog := <-c.newTaskCreatedChan:
-
-			//coordinatorRpcClient, err := NewManuscriptRpcClient(, logger, avsAndEigenMetrics)
-			//if err != nil {
-			//	logger.Error("Cannot create CoordinatorRpcClient. Is coordinator running?", "err", err)
-			//	return nil, err
-			//}
-
+			err := c.handleNewTaskCreatedLog(ctx, newTaskCreatedLog)
+			if err != nil {
+				continue
+			}
 		case blsAggServiceResp := <-c.blsAggregationService.GetResponseChannel():
 			c.logger.Info("Received response from blsAggregationService", "blsAggServiceResp", blsAggServiceResp)
 			c.sendAggregatedResponseToContract(blsAggServiceResp)
@@ -191,6 +197,21 @@ func (c *Coordinator) Start(ctx context.Context) error {
 			return nil
 		}
 	}
+}
+
+func (c *Coordinator) createNewTask() (string, error) {
+	// TODO generate task
+	taskDetails := core.GenerateTaskDetails(&core.TaskDetails{
+		Version:    "v1",
+		Chain:      "eth",
+		TaskType:   "block",
+		Method:     "merkle",
+		StartBlock: 56753454,
+		EndBlock:   56753954,
+		Difficulty: 23,
+		Deadline:   time.Now().Add(12 * time.Hour).Unix(),
+	})
+	return taskDetails, nil
 }
 
 // sendNewTask sends a new task to the task manager contract, and updates the Task dict struct
@@ -212,8 +233,13 @@ func (c *Coordinator) sendNewTask(taskDetails string) error {
 	for i := range newTask.QuorumNumbers {
 		quorumThresholdPercentages[i] = sdktypes.QuorumThresholdPercentage(newTask.QuorumThresholdPercentage)
 	}
-	//TODO parse taskTimeToExpiry from task detail
-	taskTimeToExpiry := taskChallengeWindowBlock * blockTime
+	parsedTaskDetails, err := core.ParseTaskDetails(taskDetails)
+	if err != nil {
+		c.logger.Error("Failed to parse task details", "err", err)
+		return err
+	}
+	taskTimeToExpiry := time.Duration(parsedTaskDetails.Deadline-time.Now().Unix()) * time.Second
+
 	var quorumNums sdktypes.QuorumNums
 	for _, quorumNum := range newTask.QuorumNumbers {
 		quorumNums = append(quorumNums, sdktypes.QuorumNum(quorumNum))
@@ -226,12 +252,42 @@ func (c *Coordinator) sendNewTask(taskDetails string) error {
 	return nil
 }
 
+func (c *Coordinator) handleNewTaskCreatedLog(ctx context.Context, newTaskCreatedLog *bindings.ChainbaseServiceManagerNewTaskCreated) error {
+	curBlockNum, err := c.ethClient.BlockNumber(ctx)
+	if err != nil {
+		c.logger.Error("Unable to get current block number")
+		return err
+	}
+
+	quorumNumbers := sdktypes.QuorumNums{sdktypes.QuorumNum(0)}
+	operatorsAvsStateDict, err := c.avsRegistryService.GetOperatorsAvsStateAtBlock(ctx, quorumNumbers, sdktypes.BlockNum(curBlockNum))
+	if err != nil {
+		return err
+	}
+	for _, avsState := range operatorsAvsStateDict {
+		nodeRpcClient, err := NewManuscriptRpcClient(avsState.OperatorInfo.Socket.String(), c.logger, nil)
+		if err != nil {
+			c.logger.Error("Cannot create ManuscriptRpcClient. Is manuscript node running?", "err", err)
+			return err
+		}
+
+		nodeRpcClient.CreateNewTask(&nodepb.NewTaskRequest{
+			TaskIndex: newTaskCreatedLog.TaskIndex,
+			Task: &nodepb.Task{
+				TaskDetails:               newTaskCreatedLog.Task.TaskDetails,
+				TaskCreatedBlock:          newTaskCreatedLog.Task.TaskCreatedBlock,
+				QuorumNumbers:             newTaskCreatedLog.Task.QuorumNumbers,
+				QuorumThresholdPercentage: newTaskCreatedLog.Task.QuorumThresholdPercentage,
+			},
+		})
+	}
+	c.logger.Info("New task has been successfully sent to all nodes.")
+	return nil
+}
+
 func (c *Coordinator) sendAggregatedResponseToContract(blsAggServiceResp blsagg.BlsAggregationServiceResponse) {
-	// TODO: check if blsAggServiceResp contains an err
 	if blsAggServiceResp.Err != nil {
 		c.logger.Error("BlsAggregationServiceResponse contains an error", "err", blsAggServiceResp.Err)
-		// panice to help with debugging (fail fast), but we shouldn't panic if we run this in production
-		panic(blsAggServiceResp.Err)
 	}
 	nonSignerPubkeys := []bindings.BN254G1Point{}
 	for _, nonSignerPubkey := range blsAggServiceResp.NonSignersPubkeysG1 {
@@ -265,4 +321,5 @@ func (c *Coordinator) sendAggregatedResponseToContract(blsAggServiceResp blsagg.
 	if err != nil {
 		c.logger.Error("Coordinator failed to respond to task", "err", err)
 	}
+	c.logger.Info("Aggregated response has been successfully sent to ChainbaseServiceManager contract.")
 }

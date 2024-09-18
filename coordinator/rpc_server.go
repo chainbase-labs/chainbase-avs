@@ -77,7 +77,7 @@ func (c *Coordinator) ProcessSignedTaskResponse(ctx context.Context, signedTaskR
 	copy(operatorId[:], signedTaskResponse.OperatorId)
 
 	err = c.blsAggregationService.ProcessNewSignature(
-		ctx, taskIndex, taskResponseDigest,
+		ctx, taskIndex, taskResponse,
 		&blsSignature, operatorId,
 	)
 

@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Layr-Labs/eigensdk-go/logging"
@@ -57,12 +56,12 @@ func (c *CoordinatorRpcClient) SendSignedTaskResponseToCoordinator(signedTaskRes
 		}
 	}
 
-	c.logger.Info("Sending signed task response to coordinator", "signedTaskResponse", fmt.Sprintf("%#v", signedTaskResponse))
+	c.logger.Info("Sending signed task response to coordinator", "task index", signedTaskResponse.TaskResponse.ReferenceTaskIndex, "task response", signedTaskResponse.TaskResponse.TaskResponse)
 	for i := 0; i < 5; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
+		//ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		//defer cancel()
 
-		response, err := c.rpcClient.ProcessSignedTaskResponse(ctx, signedTaskResponse)
+		response, err := c.rpcClient.ProcessSignedTaskResponse(context.Background(), signedTaskResponse)
 		if err != nil {
 			c.logger.Info("Received error from coordinator", "err", err)
 		}

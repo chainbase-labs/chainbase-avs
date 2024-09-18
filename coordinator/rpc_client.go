@@ -2,7 +2,6 @@ package coordinator
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Layr-Labs/eigensdk-go/logging"
@@ -53,12 +52,12 @@ func (c *ManuscriptRpcClient) CreateNewTask(task *nodepb.NewTaskRequest) {
 		}
 	}
 
-	c.logger.Info("Sending new task to manuscript node", "task", fmt.Sprintf("%#v", task))
+	c.logger.Info("Sending new task to manuscript node", "task index", task.TaskIndex)
 	for i := 0; i < 5; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
+		//ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		//defer cancel()
 
-		response, err := c.rpcClient.ReceiveNewTask(ctx, task)
+		response, err := c.rpcClient.ReceiveNewTask(context.Background(), task)
 		if err != nil {
 			c.logger.Info("Received error from manuscript node", "err", err)
 		}

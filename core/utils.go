@@ -1,7 +1,10 @@
 package core
 
 import (
+	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -73,4 +76,67 @@ func ConvertToBN254G2Point(input *bls.G2Point) bindings.BN254G2Point {
 		Y: [2]*big.Int{input.Y.A1.BigInt(big.NewInt(0)), input.Y.A0.BigInt(big.NewInt(0))},
 	}
 	return output
+}
+
+type TaskDetails struct {
+	Version    string
+	Chain      string
+	TaskType   string
+	Method     string
+	StartBlock int
+	EndBlock   int
+	Difficulty int
+	Deadline   int64
+}
+
+func GenerateTaskDetails(task *TaskDetails) string {
+	parts := []string{
+		task.Version,
+		task.Chain,
+		task.TaskType,
+		task.Method,
+		"start:" + strconv.Itoa(task.StartBlock),
+		"end:" + strconv.Itoa(task.EndBlock),
+		"difficulty:" + strconv.Itoa(task.Difficulty),
+		"deadline:" + strconv.FormatInt(task.Deadline, 10),
+	}
+	return strings.Join(parts, ";")
+}
+
+func ParseTaskDetails(details string) (*TaskDetails, error) {
+	parts := strings.Split(details, ";")
+	if len(parts) < 8 {
+		return nil, fmt.Errorf("invalid task details format")
+	}
+
+	startBlock, err := strconv.Atoi(strings.Split(parts[4], ":")[1])
+	if err != nil {
+		return nil, err
+	}
+
+	endBlock, err := strconv.Atoi(strings.Split(parts[5], ":")[1])
+	if err != nil {
+		return nil, err
+	}
+
+	difficulty, err := strconv.Atoi(strings.Split(parts[6], ":")[1])
+	if err != nil {
+		return nil, err
+	}
+
+	deadline, err := strconv.ParseInt(strings.Split(parts[7], ":")[1], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TaskDetails{
+		Version:    parts[0],
+		Chain:      parts[1],
+		TaskType:   parts[2],
+		Method:     parts[3],
+		StartBlock: startBlock,
+		EndBlock:   endBlock,
+		Difficulty: difficulty,
+		Deadline:   deadline,
+	}, nil
 }

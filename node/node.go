@@ -60,8 +60,6 @@ type ManuscriptNode struct {
 	nodeServerIpPortAddr string
 	// rpc client to send signed task responses to coordinator
 	coordinatorRpcClient CoordinatorRpcClienter
-	// needed when opting in to avs (allow this service manager contract to slash operator)
-	credibleSquaringServiceManagerAddr common.Address
 }
 
 func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
@@ -185,24 +183,23 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 	}
 
 	msNode := &ManuscriptNode{
-		config:                             c,
-		logger:                             logger,
-		metricsReg:                         reg,
-		metrics:                            avsAndEigenMetrics,
-		nodeApi:                            nodeApi,
-		ethClient:                          ethRpcClient,
-		avsWriter:                          avsWriter,
-		avsReader:                          avsReader,
-		eigenlayerReader:                   sdkClients.ElChainReader,
-		eigenlayerWriter:                   sdkClients.ElChainWriter,
-		blsKeypair:                         blsKeyPair,
-		operatorAddr:                       common.HexToAddress(c.OperatorAddress),
-		coordinatorServerIpPortAddr:        c.CoordinatorServerIpPortAddress,
-		nodeServerIpPortAddr:               c.NodeServerIpPortAddress,
-		coordinatorRpcClient:               coordinatorRpcClient,
-		newTaskCreatedChan:                 make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
-		credibleSquaringServiceManagerAddr: common.HexToAddress(c.AVSRegistryCoordinatorAddress),
-		operatorId:                         [32]byte{0}, // this is set below
+		config:                      c,
+		logger:                      logger,
+		metricsReg:                  reg,
+		metrics:                     avsAndEigenMetrics,
+		nodeApi:                     nodeApi,
+		ethClient:                   ethRpcClient,
+		avsWriter:                   avsWriter,
+		avsReader:                   avsReader,
+		eigenlayerReader:            sdkClients.ElChainReader,
+		eigenlayerWriter:            sdkClients.ElChainWriter,
+		blsKeypair:                  blsKeyPair,
+		operatorAddr:                common.HexToAddress(c.OperatorAddress),
+		coordinatorServerIpPortAddr: c.CoordinatorServerIpPortAddress,
+		nodeServerIpPortAddr:        c.NodeServerIpPortAddress,
+		coordinatorRpcClient:        coordinatorRpcClient,
+		newTaskCreatedChan:          make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
+		operatorId:                  [32]byte{0}, // this is set below
 	}
 
 	// OperatorId is set in contract during registration so we get it after registering operator.
@@ -283,8 +280,8 @@ func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.Ch
 		"quorumNumbers", newTaskCreatedLog.Task.QuorumNumbers,
 		"QuorumThresholdPercentage", newTaskCreatedLog.Task.QuorumThresholdPercentage,
 	)
-	//TODO
-	response := ""
+	//TODO execute task
+	response := "0x9c2643e05c22861a55cb4a5455678b5acec4e0c5d1c0311d22e2abacfa2bab29"
 	taskResponse := &bindings.IChainbaseServiceManagerTaskResponse{
 		ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
 		TaskResponse:       response,
