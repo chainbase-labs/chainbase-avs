@@ -90,14 +90,17 @@ def create_postgresql_sink(t_env):
             pow_result STRING,
             insert_at TIMESTAMP(3),
             difficulty INT,
-            task_index BIGINT
+            task_index BIGINT,
+            PRIMARY KEY (chain, block_number) NOT ENFORCED
         ) WITH (
             'connector' = 'jdbc',
             'url' = 'jdbc:postgresql://postgres:5432/manuscript_node',
             'table-name' = 'pow_results',
             'username' = 'postgres',
             'password' = 'postgres',
-            'sink.max-retries' = '3'
+            'sink.max-retries' = '3',
+            'sink.buffer-flush.max-rows' = '1',
+            'sink.buffer-flush.interval' = '0s'
         )
     """)
 
