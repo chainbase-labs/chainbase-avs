@@ -24,7 +24,9 @@ generate-proof:
 	end_at=$${end_at:-10010}; \
 	read -p "Enter difficulty (default: 22): " difficulty; \
 	difficulty=$${difficulty:-22}; \
-	docker-compose -f flink/docker-compose.yml exec jobmanager ./bin/flink run -py /opt/proof/streaming.py --chain $$chain --start_at $$start_at --end_at $$end_at --difficulty $$difficulty
+	read -p "Enter task index (default: 0): " task_index; \
+	task_index=$${task_index:-0}; \
+	docker-compose -f flink/docker-compose.yml exec jobmanager ./bin/flink run -py /opt/proof/streaming.py --chain $$chain --start_at $$start_at --end_at $$end_at --difficulty $$difficulty --task_index $$task_index
 
 help:
 	@echo "Available targets:"

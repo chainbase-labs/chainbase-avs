@@ -66,9 +66,10 @@ def perform_proof_of_work(input_hash, difficulty):
         nonce += 1
 
 class ProcessFunction(MapFunction):
-    def __init__(self, chain, difficulty):
+    def __init__(self, chain, difficulty, task_index):
         self.chain = chain
         self.difficulty = difficulty
+        self.task_index = task_index
 
     def map(self, value):
         is_insert, row = value
@@ -76,7 +77,7 @@ class ProcessFunction(MapFunction):
             block_number, block_hash = row
             pow_result = perform_proof_of_work(block_hash.encode(), self.difficulty)
             insert_at = datetime.now()
-            return Row(self.chain, block_number, block_hash, pow_result, insert_at, self.difficulty)
+            return Row(self.chain, block_number, block_hash, pow_result, insert_at, self.difficulty, self.task_index)
         else:
             return None
 
@@ -88,7 +89,8 @@ def create_postgresql_sink(t_env):
             block_hash STRING,
             pow_result STRING,
             insert_at TIMESTAMP(3),
-            difficulty INT
+            difficulty INT,
+            task_index BIGINT
         ) WITH (
             'connector' = 'jdbc',
             'url' = 'jdbc:postgresql://postgres:5432/manuscript_node',
@@ -99,7 +101,7 @@ def create_postgresql_sink(t_env):
         )
     """)
 
-def main(chain, start_at, end_at, difficulty):
+def main(chain, start_at, end_at, difficulty, task_index):
     # Set up execution environment
     env = StreamExecutionEnvironment.get_execution_environment()
     t_env = StreamTableEnvironment.create(env)
@@ -126,8 +128,8 @@ def main(chain, start_at, end_at, difficulty):
 
     # Apply map function
     processed_stream = ds.map(
-        ProcessFunction(chain, difficulty),
-        output_type=Types.ROW([Types.STRING(), Types.LONG(), Types.STRING(), Types.STRING(), Types.SQL_TIMESTAMP(), Types.INT()])
+        ProcessFunction(chain, difficulty, task_index),
+        output_type=Types.ROW([Types.STRING(), Types.LONG(), Types.STRING(), Types.STRING(), Types.SQL_TIMESTAMP(), Types.INT(), Types.LONG()])
     )
 
     # Create PostgreSQL sink
@@ -152,6 +154,7 @@ if __name__ == "__main__":
     parser.add_argument('--start_at', type=int, required=True, help='Start block number')
     parser.add_argument('--end_at', type=int, required=True, help='End block number')
     parser.add_argument('--difficulty', type=int, required=True, help='Proof of Work difficulty', default=22)
+    parser.add_argument('--task_index', type=int, required=True, help='Task index')
     args = parser.parse_args()
 
-    main(args.chain, args.start_at, args.end_at, args.difficulty)
+    main(args.chain, args.start_at, args.end_at, args.difficulty, args.task_index)
