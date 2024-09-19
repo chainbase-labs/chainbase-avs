@@ -10,3 +10,7 @@ coverage.out
 
 # Config file
 /config-files/*.yaml
+/node/flink/log
+/node/flink/postgres_data
+/node/flink/statuspoint
+/node/flink/tmp
