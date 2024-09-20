@@ -401,8 +401,8 @@ func (n *ManuscriptNode) ExecuteTask(taskIndex uint32, taskDetails string) error
 }
 
 func (n *ManuscriptNode) WaitTaskCompletion(taskIndex uint32) error {
-	maxRetries := 30
-	retryInterval := time.Second * 10
+	maxRetries := 10
+	retryInterval := time.Second * 30
 
 	for i := 0; i < maxRetries; i++ {
 		query := `SELECT pow_result FROM pow_results WHERE task_index = $1`

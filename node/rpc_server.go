@@ -5,6 +5,9 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 
 	nodepb "github.com/chainbase-labs/chainbase-avs/api/grpc/node"
 	"github.com/chainbase-labs/chainbase-avs/contracts/bindings"
@@ -16,7 +19,9 @@ func (n *ManuscriptNode) startServer(_ context.Context) error {
 		n.logger.Fatal("Failed to listen", "err", err)
 	}
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(
+		grpc.UnaryInterceptor(n.ipCheckInterceptor),
+	)
 	nodepb.RegisterManuscriptNodeServiceServer(server, n)
 	n.logger.Info("Server listening at", "addr", listener.Addr())
 
@@ -26,8 +31,33 @@ func (n *ManuscriptNode) startServer(_ context.Context) error {
 	return nil
 }
 
+func (n *ManuscriptNode) ipCheckInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "failed to get peer info")
+	}
+
+	addr := p.Addr.String()
+	ip, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, "failed to parse client ip")
+	}
+
+	allowedIP, _, err := net.SplitHostPort(n.coordinatorServerIpPortAddr)
+	if err != nil {
+		n.logger.Error("Failed to parse coordinator ip", "err", err)
+		return nil, status.Errorf(codes.Internal, "failed to parse coordinator ip")
+	}
+
+	if ip != allowedIP {
+		n.logger.Info("Client ip is not allowed", "ip", ip)
+		return nil, status.Errorf(codes.PermissionDenied, "client ip is not allowed")
+	}
+
+	return handler(ctx, req)
+}
+
 func (n *ManuscriptNode) ReceiveNewTask(_ context.Context, req *nodepb.NewTaskRequest) (*nodepb.NewTaskResponse, error) {
-	// TODO verify request from coordinator
 	newTask := &bindings.ChainbaseServiceManagerNewTaskCreated{
 		TaskIndex: req.TaskIndex,
 		Task: bindings.IChainbaseServiceManagerTask{
