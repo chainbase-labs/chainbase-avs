@@ -16,4 +16,11 @@ type NodeConfig struct {
 	NodeApiIpPortAddress           string `yaml:"node_api_ip_port_address"`
 	EnableNodeApi                  bool   `yaml:"enable_node_api"`
 	NodeServerIpPortAddress        string `yaml:"node_server_ip_port_address"`
+	PostgresHost                   string `yaml:"postgres_host"`
+	PostgresPort                   string `yaml:"postgres_port"`
+	PostgresUser                   string `yaml:"postgres_user"`
+	PostgresPassword               string `yaml:"postgres_password"`
+	PostgresDatabase               string `yaml:"postgres_database"`
 }
+
+type TaskIndex = uint32

@@ -1,9 +1,16 @@
 package node
 
 import (
+	"bytes"
 	"context"
+	"database/sql"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"io"
+	"log"
 	"os"
+	"time"
 
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	sdkelcontracts "github.com/Layr-Labs/eigensdk-go/chainio/clients/elcontracts"
@@ -20,8 +27,13 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/nodeapi"
 	"github.com/Layr-Labs/eigensdk-go/signerv2"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+	"github.com/cbergoon/merkletree"
+	dockerTypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
+	dockerClient "github.com/docker/docker/client"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 
 	coordinatorpb "github.com/chainbase-labs/chainbase-avs/api/grpc/coordinator"
@@ -60,6 +72,12 @@ type ManuscriptNode struct {
 	nodeServerIpPortAddr string
 	// rpc client to send signed task responses to coordinator
 	coordinatorRpcClient CoordinatorRpcClienter
+	// task flink jobID
+	taskJobIDs map[types.TaskIndex]string
+	// docker client
+	dockerClient *dockerClient.Client
+	// postgres db
+	db *sql.DB
 }
 
 func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
@@ -182,6 +200,27 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 		return nil, err
 	}
 
+	cli, err := dockerClient.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		logger.Error("Cannot create docker client", "err", err)
+		return nil, err
+	}
+
+	dataSource := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		c.PostgresHost, c.PostgresPort, c.PostgresUser, c.PostgresPassword, c.PostgresDatabase)
+
+	db, err := sql.Open("postgres", dataSource)
+	if err != nil {
+		log.Fatal("Error connecting to the database: ", err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		log.Fatal("Error pinging the database: ", err)
+	}
+
+	fmt.Println("Successfully connected to the database")
+
 	msNode := &ManuscriptNode{
 		config:                      c,
 		logger:                      logger,
@@ -200,6 +239,9 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 		coordinatorRpcClient:        coordinatorRpcClient,
 		newTaskCreatedChan:          make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
 		operatorId:                  [32]byte{0}, // this is set below
+		taskJobIDs:                  make(map[types.TaskIndex]string),
+		dockerClient:                cli,
+		db:                          db,
 	}
 
 	// OperatorId is set in contract during registration so we get it after registering operator.
@@ -259,7 +301,10 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 			n.logger.Fatal("Error in metrics server", "err", err)
 		case newTaskCreatedLog := <-n.newTaskCreatedChan:
 			n.metrics.IncNumTasksReceived()
-			taskResponse := n.ProcessNewTaskCreatedLog(newTaskCreatedLog)
+			taskResponse, err := n.ProcessNewTaskCreatedLog(newTaskCreatedLog)
+			if err != nil {
+				continue
+			}
 			signedTaskResponse, err := n.SignTaskResponse(taskResponse)
 			if err != nil {
 				continue
@@ -271,7 +316,7 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 
 // ProcessNewTaskCreatedLog Takes a NewTaskCreatedLog struct as input and returns a TaskResponseHeader struct.
 // The TaskResponseHeader struct is the struct that is signed and sent to the contract as a task response.
-func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.ChainbaseServiceManagerNewTaskCreated) *bindings.IChainbaseServiceManagerTaskResponse {
+func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.ChainbaseServiceManagerNewTaskCreated) (*bindings.IChainbaseServiceManagerTaskResponse, error) {
 	n.logger.Debug("Received new task", "task", newTaskCreatedLog)
 	n.logger.Info("Received new task",
 		"taskDetails", newTaskCreatedLog.Task.TaskDetails,
@@ -280,13 +325,144 @@ func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.Ch
 		"quorumNumbers", newTaskCreatedLog.Task.QuorumNumbers,
 		"QuorumThresholdPercentage", newTaskCreatedLog.Task.QuorumThresholdPercentage,
 	)
-	//TODO execute task
-	response := "0x9c2643e05c22861a55cb4a5455678b5acec4e0c5d1c0311d22e2abacfa2bab29"
-	taskResponse := &bindings.IChainbaseServiceManagerTaskResponse{
+
+	if err := n.ExecuteTask(newTaskCreatedLog.TaskIndex, newTaskCreatedLog.Task.TaskDetails); err != nil {
+		return nil, err
+	}
+
+	if err := n.WaitTaskCompletion(newTaskCreatedLog.TaskIndex); err != nil {
+		return nil, err
+	}
+
+	response, err := n.QueryTaskResponse(newTaskCreatedLog.TaskIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	n.CancelTaskJob(newTaskCreatedLog.TaskIndex)
+
+	return &bindings.IChainbaseServiceManagerTaskResponse{
 		ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
 		TaskResponse:       response,
+	}, nil
+}
+
+func (n *ManuscriptNode) ExecuteTask(taskIndex uint32, taskDetails string) error {
+	parsedTaskDetails, err := core.ParseTaskDetails(taskDetails)
+	if err != nil {
+		n.logger.Error("Failed to parse task details", "err", err)
+		return err
 	}
-	return taskResponse
+
+	n.logger.Info("Executing task", "task index", taskIndex, "task details", taskDetails)
+
+	containerName := "chainbase_jobmanager"
+	cmd := []string{
+		"/bin/sh",
+		"-c",
+		fmt.Sprintf("./bin/flink run -py /opt/proof/streaming.py --task_index %d --chain %s --start_at %d --end_at %d --difficulty %d",
+			taskIndex, parsedTaskDetails.Chain, parsedTaskDetails.StartBlock, parsedTaskDetails.EndBlock, parsedTaskDetails.Difficulty),
+	}
+	execConfig := dockerTypes.ExecConfig{
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          cmd,
+	}
+
+	execID, err := n.dockerClient.ContainerExecCreate(context.Background(), containerName, execConfig)
+	if err != nil {
+		n.logger.Error("Failed to create exec instance", "error", err)
+		return err
+	}
+
+	resp, err := n.dockerClient.ContainerExecAttach(context.Background(), execID.ID, dockerTypes.ExecStartCheck{})
+	if err != nil {
+		n.logger.Error("Failed to attach to exec instance", "error", err)
+		return err
+	}
+	defer resp.Close()
+
+	var output bytes.Buffer
+	_, err = io.Copy(&output, resp.Reader)
+	if err != nil {
+		n.logger.Error("Failed to read exec output", "error", err)
+		return err
+	}
+
+	jobID, err := extractJobID(output.String())
+	if err != nil {
+		n.logger.Error("Error extract job id", "err", err)
+		return err
+	}
+
+	n.taskJobIDs[taskIndex] = jobID
+	n.logger.Info("Job has been submitted", "jobID", jobID)
+	return nil
+}
+
+func (n *ManuscriptNode) WaitTaskCompletion(taskIndex uint32) error {
+	maxRetries := 30
+	retryInterval := time.Second * 10
+
+	for i := 0; i < maxRetries; i++ {
+		query := `SELECT pow_result FROM pow_results WHERE task_index = $1`
+		rows, err := n.db.Query(query, taskIndex)
+		if err != nil {
+			n.logger.Error("Error query task response", "err", err)
+		}
+		// there is task result in postgres db
+		if rows.Next() {
+			rows.Close()
+			n.logger.Info("Task is completed", "taskIndex", taskIndex)
+			return nil
+		}
+
+		rows.Close()
+		n.logger.Info("Task is not completed yet, waiting...", "taskIndex", taskIndex, "attempt", i+1)
+		time.Sleep(retryInterval)
+	}
+
+	n.logger.Info("Max retries reached, task is not completed", "taskIndex", taskIndex)
+	return errors.New("task was not completed on time")
+}
+
+func (n *ManuscriptNode) QueryTaskResponse(taskIndex uint32) (string, error) {
+	query := `SELECT pow_result FROM pow_results WHERE task_index = $1`
+	rows, err := n.db.Query(query, taskIndex)
+	if err != nil {
+		n.logger.Error("Error query task response", "err", err)
+		return "", err
+	}
+	defer rows.Close()
+
+	resultContents := make([]merkletree.Content, 0)
+	for rows.Next() {
+		var result string
+		err := rows.Scan(&result)
+		if err != nil {
+			n.logger.Error("Error scanning row", "err", err)
+			return "", err
+		}
+		resultContents = append(resultContents, ResultContent{
+			result: result,
+		})
+	}
+
+	if err = rows.Err(); err != nil {
+		n.logger.Error("Error iterating rows", "err", err)
+		return "", err
+	}
+
+	//Create a new Merkle Tree from the list of Content
+	t, err := merkletree.NewTree(resultContents)
+	if err != nil {
+		n.logger.Error("Error create merkle tree", "err", err)
+		return "", err
+	}
+
+	//return the Merkle Root of the tree
+	response := "0x" + hex.EncodeToString(t.MerkleRoot())
+	return response, nil
 }
 
 func (n *ManuscriptNode) SignTaskResponse(taskResponse *bindings.IChainbaseServiceManagerTaskResponse) (*coordinatorpb.SignedTaskResponseRequest, error) {
@@ -314,4 +490,35 @@ func (n *ManuscriptNode) SignTaskResponse(taskResponse *bindings.IChainbaseServi
 
 	n.logger.Debug("Signed task response", "signedTaskResponse", signedTaskResponse)
 	return signedTaskResponse, nil
+}
+
+func (n *ManuscriptNode) CancelTaskJob(taskIndex uint32) {
+	jobID, ok := n.taskJobIDs[taskIndex]
+	if !ok {
+		n.logger.Error("Task JobID is not exist", "taskIndex", taskIndex)
+	}
+	n.logger.Info("Task Job  is cancelling", "taskIndex", taskIndex, "JobID", jobID)
+
+	containerName := "chainbase_jobmanager"
+	cmd := []string{"flink", "cancel", jobID}
+	execConfig := dockerTypes.ExecConfig{
+		Cmd:          cmd,
+		AttachStdout: true,
+		AttachStderr: true,
+	}
+
+	execID, err := n.dockerClient.ContainerExecCreate(context.Background(), containerName, execConfig)
+	if err != nil {
+		n.logger.Error("Failed to create exec instance", "error", err)
+		return
+	}
+
+	resp, err := n.dockerClient.ContainerExecAttach(context.Background(), execID.ID, dockerTypes.ExecStartCheck{})
+	if err != nil {
+		n.logger.Error("Failed to attach to exec instance", "error", err)
+		return
+	}
+	defer resp.Close()
+
+	n.logger.Info("Task job is cancelled", "taskIndex", taskIndex, "JobID", jobID)
 }

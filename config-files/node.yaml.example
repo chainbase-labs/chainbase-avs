@@ -22,3 +22,10 @@ eigen_metrics_ip_port_address: localhost:9090
 enable_metrics: true
 node_api_ip_port_address: localhost:9010
 enable_node_api: true
+
+# postgres container
+postgres_host: postgres
+postgres_port: 5432
+postgres_user: postgres
+postgres_password: postgres
+postgres_database: manuscript_node

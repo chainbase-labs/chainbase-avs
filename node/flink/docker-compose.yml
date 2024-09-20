@@ -37,6 +37,8 @@ services:
     image: postgres:16.4
     container_name: chainbase_postgres
     hostname: chainbase_postgres
+    ports:
+      - "5432:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
       - ./schema:/schema

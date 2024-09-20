@@ -203,12 +203,12 @@ func (c *Coordinator) createNewTask() (string, error) {
 	// TODO generate task
 	taskDetails := core.GenerateTaskDetails(&core.TaskDetails{
 		Version:    "v1",
-		Chain:      "eth",
+		Chain:      "zkevm",
 		TaskType:   "block",
 		Method:     "merkle",
-		StartBlock: 56753454,
-		EndBlock:   56753954,
-		Difficulty: 23,
+		StartBlock: 10000,
+		EndBlock:   10010,
+		Difficulty: 10,
 		Deadline:   time.Now().Add(12 * time.Hour).Unix(),
 	})
 	return taskDetails, nil
