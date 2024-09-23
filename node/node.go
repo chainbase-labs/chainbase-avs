@@ -65,6 +65,8 @@ type ManuscriptNode struct {
 	operatorAddr     common.Address
 	// receive new tasks in this chan (typically from listening to onchain event)
 	newTaskCreatedChan chan *bindings.ChainbaseServiceManagerNewTaskCreated
+	// receive task response from ProcessNewTaskCreatedLog
+	TaskResponseChan chan *bindings.IChainbaseServiceManagerTaskResponse
 	// ip address of coordinator
 	coordinatorServerIpPortAddr string
 	// nodeServerIpPortAddr is the IP address and port of the Node gRPC server.
@@ -238,6 +240,7 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 		nodeServerIpPortAddr:        c.NodeServerIpPortAddress,
 		coordinatorRpcClient:        coordinatorRpcClient,
 		newTaskCreatedChan:          make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
+		TaskResponseChan:            make(chan *bindings.IChainbaseServiceManagerTaskResponse),
 		operatorId:                  [32]byte{0}, // this is set below
 		taskJobIDs:                  make(map[types.TaskIndex]string),
 		dockerClient:                cli,
@@ -301,10 +304,8 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 			n.logger.Fatal("Error in metrics server", "err", err)
 		case newTaskCreatedLog := <-n.newTaskCreatedChan:
 			n.metrics.IncNumTasksReceived()
-			taskResponse, err := n.ProcessNewTaskCreatedLog(newTaskCreatedLog)
-			if err != nil {
-				continue
-			}
+			go n.ProcessNewTaskCreatedLog(newTaskCreatedLog)
+		case taskResponse := <-n.TaskResponseChan:
 			signedTaskResponse, err := n.SignTaskResponse(taskResponse)
 			if err != nil {
 				continue
@@ -314,9 +315,8 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 	}
 }
 
-// ProcessNewTaskCreatedLog Takes a NewTaskCreatedLog struct as input and returns a TaskResponseHeader struct.
-// The TaskResponseHeader struct is the struct that is signed and sent to the contract as a task response.
-func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.ChainbaseServiceManagerNewTaskCreated) (*bindings.IChainbaseServiceManagerTaskResponse, error) {
+// ProcessNewTaskCreatedLog Takes a NewTaskCreatedLog struct as input and returns a TaskResponseHeader struct to TaskResponseChan channel.
+func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.ChainbaseServiceManagerNewTaskCreated) {
 	n.logger.Debug("Received new task", "task", newTaskCreatedLog)
 	n.logger.Info("Received new task",
 		"taskDetails", newTaskCreatedLog.Task.TaskDetails,
@@ -326,34 +326,37 @@ func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.Ch
 		"QuorumThresholdPercentage", newTaskCreatedLog.Task.QuorumThresholdPercentage,
 	)
 
-	if err := n.ExecuteTask(newTaskCreatedLog.TaskIndex, newTaskCreatedLog.Task.TaskDetails); err != nil {
-		return nil, err
+	parsedTaskDetails, err := core.ParseTaskDetails(newTaskCreatedLog.Task.TaskDetails)
+	if err != nil {
+		n.logger.Error("Failed to parse task details", "err", err)
+		return
 	}
 
-	if err := n.WaitTaskCompletion(newTaskCreatedLog.TaskIndex); err != nil {
-		return nil, err
+	if err := n.ExecuteTask(newTaskCreatedLog.TaskIndex, parsedTaskDetails); err != nil {
+		n.logger.Error("Failed to execute task", "err", err)
+		return
+	}
+
+	if err := n.WaitTaskCompletion(newTaskCreatedLog.TaskIndex, parsedTaskDetails); err != nil {
+		n.logger.Error("Error wait task completion", "err", err)
+		return
 	}
 
 	response, err := n.QueryTaskResponse(newTaskCreatedLog.TaskIndex)
 	if err != nil {
-		return nil, err
+		n.logger.Error("Error query task response", "err", err)
+		return
 	}
 
 	n.CancelTaskJob(newTaskCreatedLog.TaskIndex)
 
-	return &bindings.IChainbaseServiceManagerTaskResponse{
+	n.TaskResponseChan <- &bindings.IChainbaseServiceManagerTaskResponse{
 		ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
 		TaskResponse:       response,
-	}, nil
+	}
 }
 
-func (n *ManuscriptNode) ExecuteTask(taskIndex uint32, taskDetails string) error {
-	parsedTaskDetails, err := core.ParseTaskDetails(taskDetails)
-	if err != nil {
-		n.logger.Error("Failed to parse task details", "err", err)
-		return err
-	}
-
+func (n *ManuscriptNode) ExecuteTask(taskIndex uint32, taskDetails *core.TaskDetails) error {
 	n.logger.Info("Executing task", "task index", taskIndex, "task details", taskDetails)
 
 	containerName := "chainbase_jobmanager"
@@ -361,7 +364,7 @@ func (n *ManuscriptNode) ExecuteTask(taskIndex uint32, taskDetails string) error
 		"/bin/sh",
 		"-c",
 		fmt.Sprintf("./bin/flink run -py /opt/proof/streaming.py --task_index %d --chain %s --start_at %d --end_at %d --difficulty %d",
-			taskIndex, parsedTaskDetails.Chain, parsedTaskDetails.StartBlock, parsedTaskDetails.EndBlock, parsedTaskDetails.Difficulty),
+			taskIndex, taskDetails.Chain, taskDetails.StartBlock, taskDetails.EndBlock, taskDetails.Difficulty),
 	}
 	execConfig := dockerTypes.ExecConfig{
 		AttachStdout: true,
@@ -400,30 +403,31 @@ func (n *ManuscriptNode) ExecuteTask(taskIndex uint32, taskDetails string) error
 	return nil
 }
 
-func (n *ManuscriptNode) WaitTaskCompletion(taskIndex uint32) error {
-	maxRetries := 10
+func (n *ManuscriptNode) WaitTaskCompletion(taskIndex uint32, taskDetails *core.TaskDetails) error {
 	retryInterval := time.Second * 30
-
-	for i := 0; i < maxRetries; i++ {
+	resultCount := taskDetails.EndBlock - taskDetails.StartBlock + 1
+	for {
+		if time.Now().Unix() >= taskDetails.Deadline {
+			return errors.New("task was not completed on time")
+		}
 		query := `SELECT pow_result FROM pow_results WHERE task_index = $1`
 		rows, err := n.db.Query(query, taskIndex)
 		if err != nil {
 			n.logger.Error("Error query task response", "err", err)
 		}
-		// there is task result in postgres db
-		if rows.Next() {
-			rows.Close()
+		rowsCount := 0
+		for rows.Next() {
+			rowsCount++
+		}
+		rows.Close()
+		// there is all required task result in postgres db
+		if rowsCount >= resultCount {
 			n.logger.Info("Task is completed", "taskIndex", taskIndex)
 			return nil
 		}
-
-		rows.Close()
-		n.logger.Info("Task is not completed yet, waiting...", "taskIndex", taskIndex, "attempt", i+1)
+		// TODO print log about task execute progress
 		time.Sleep(retryInterval)
 	}
-
-	n.logger.Info("Max retries reached, task is not completed", "taskIndex", taskIndex)
-	return errors.New("task was not completed on time")
 }
 
 func (n *ManuscriptNode) QueryTaskResponse(taskIndex uint32) (string, error) {
