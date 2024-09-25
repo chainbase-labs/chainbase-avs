@@ -5,7 +5,7 @@ services:
     container_name: chainbase_jobmanager
     hostname: chainbase_jobmanager
     user: "flink"
-    command: "./bin/jobmanager.sh start-foreground"
+    command: "./bin/jobmanager.sh start-foreground ; ./bin/sql-gateway.sh start -Dsql-gateway.endpoint.rest.address=localhost"
     #command: "sleep 1000"
     volumes:
       - ./tmp:/opt/flink/tmp
