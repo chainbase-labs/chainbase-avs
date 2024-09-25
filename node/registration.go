@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/Layr-Labs/eigensdk-go/chainio/clients/avsregistry"
+	"github.com/Layr-Labs/eigensdk-go/chainio/utils"
+
 	eigenSdkTypes "github.com/Layr-Labs/eigensdk-go/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -68,29 +71,18 @@ func (n *ManuscriptNode) RegisterOperatorWithAvs(
 	// hardcode these things for now
 	quorumNumbers := eigenSdkTypes.QuorumNums{eigenSdkTypes.QuorumNum(0)}
 	socket := n.nodeServerIpPortAddr
-	operatorToAvsRegistrationSigSalt := [32]byte{123}
-	curBlockNum, err := n.ethClient.BlockNumber(context.Background())
-	if err != nil {
-		n.logger.Errorf("Unable to get current block number")
-		return err
-	}
-	curBlock, err := n.ethClient.BlockByNumber(context.Background(), big.NewInt(int64(curBlockNum)))
-	if err != nil {
-		n.logger.Errorf("Unable to get current block")
-		return err
-	}
-	sigValidForSeconds := int64(1_000_000)
-	operatorToAvsRegistrationSigExpiry := big.NewInt(int64(curBlock.Time()) + sigValidForSeconds)
-	_, err = n.avsWriter.RegisterOperatorInQuorumWithAVSRegistryCoordinator(
+	_, err := n.avsWriter.RegisterOperator(
 		context.Background(),
-		operatorEcdsaKeyPair, operatorToAvsRegistrationSigSalt, operatorToAvsRegistrationSigExpiry,
-		n.blsKeypair, quorumNumbers, socket,
+		operatorEcdsaKeyPair,
+		n.blsKeypair,
+		quorumNumbers,
+		socket,
 	)
 	if err != nil {
 		n.logger.Errorf("Unable to register operator with avs registry coordinator")
 		return err
 	}
-	n.logger.Infof("Registered operator with avs registry coordinator.")
+	n.logger.Infof("Registered operator with avs registry coordinator")
 
 	return nil
 }
@@ -128,5 +120,41 @@ func (n *ManuscriptNode) PrintOperatorStatus() error {
 		return err
 	}
 	fmt.Println(string(operatorStatusJson))
+	return nil
+}
+
+// UpdateOperatorSocket update operator socket
+func (n *ManuscriptNode) UpdateOperatorSocket() error {
+	socket := n.nodeServerIpPortAddr
+	avsRegistryChainWriter := n.avsWriter.AvsRegistryWriter.(*avsregistry.AvsRegistryChainWriter)
+	_, err := avsRegistryChainWriter.UpdateSocket(
+		context.Background(),
+		eigenSdkTypes.Socket(socket),
+	)
+	if err != nil {
+		n.logger.Errorf("Unable to update operator socket")
+		return err
+	}
+	n.logger.Infof("Update operator socket successfully")
+
+	return nil
+}
+
+// DeregisterOperatorWithAvs deregister operator with avs
+func (n *ManuscriptNode) DeregisterOperatorWithAvs() error {
+	// hardcode these things for now
+	quorumNumbers := eigenSdkTypes.QuorumNums{eigenSdkTypes.QuorumNum(0)}
+	pubkey := utils.ConvertToBN254G1Point(n.blsKeypair.GetPubKeyG1())
+	_, err := n.avsWriter.DeregisterOperator(
+		context.Background(),
+		quorumNumbers,
+		pubkey,
+	)
+	if err != nil {
+		n.logger.Errorf("Unable to deregister operator with avs registry coordinator")
+		return err
+	}
+	n.logger.Infof("Deregistered operator with avs registry coordinator")
+
 	return nil
 }

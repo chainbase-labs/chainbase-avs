@@ -47,11 +47,15 @@ func main() {
 		},
 		{
 			Name:    "deregister-operator-with-avs",
-			Aliases: []string{"d"},
-			Action: func(ctx *cli.Context) error {
-				log.Fatal("Command not implemented.")
-				return nil
-			},
+			Aliases: []string{"dr"},
+			Usage:   "deregister operator with avs",
+			Action:  actions.DeregisterOperatorWithAvs,
+		},
+		{
+			Name:    "update-operator-socket",
+			Aliases: []string{"u"},
+			Usage:   "update operator socket to node_server_ip_port_address value in config file",
+			Action:  actions.UpdateOperatorSocket,
 		},
 		{
 			Name:    "print-operator-status",
