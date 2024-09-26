@@ -1,7 +1,7 @@
 version: '3.2'
 services:
   jobmanager:
-    image: repository.chainbase.com/network/flink:v1.18-0.1
+    image: repository.chainbase.com/network/flink:v1.18-0.2
     container_name: chainbase_jobmanager
     hostname: chainbase_jobmanager
     user: "flink"
@@ -19,7 +19,7 @@ services:
       - avs_network
 
   taskmanager:
-    image: repository.chainbase.com/network/flink:v1.18-0.1
+    image: repository.chainbase.com/network/flink:v1.18-0.2
     container_name: chainbase_taskmanager
     hostname: chainbase_taskmanager
     user: "flink"
