@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"math/rand"
 	"sync"
@@ -286,7 +287,7 @@ func (c *Coordinator) handleNewTaskCreatedLog(ctx context.Context, newTaskCreate
 		return err
 	}
 	for _, avsState := range operatorsAvsStateDict {
-		c.logger.Info("manuscript node", "OperatorId", avsState.OperatorId, "Socket", avsState.OperatorInfo.Socket)
+		c.logger.Info("manuscript node", "OperatorId", hex.EncodeToString(avsState.OperatorId[:]), "Socket", avsState.OperatorInfo.Socket)
 
 		nodeRpcClient, err := NewManuscriptRpcClient(avsState.OperatorInfo.Socket.String(), c.logger, nil)
 		if err != nil {

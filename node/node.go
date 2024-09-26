@@ -255,7 +255,7 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 	}
 	msNode.operatorId = operatorId
 	logger.Info("ManuscriptNode info",
-		"operatorId", operatorId,
+		"operatorId", hex.EncodeToString(operatorId[:]),
 		"operatorAddr", c.OperatorAddress,
 		"operatorG1Pubkey", msNode.blsKeypair.GetPubKeyG1(),
 		"operatorG2Pubkey", msNode.blsKeypair.GetPubKeyG2(),
@@ -317,7 +317,6 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 
 // ProcessNewTaskCreatedLog Takes a NewTaskCreatedLog struct as input and returns a TaskResponseHeader struct to TaskResponseChan channel.
 func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.ChainbaseServiceManagerNewTaskCreated) {
-	n.logger.Debug("Received new task", "task", newTaskCreatedLog)
 	n.logger.Info("Received new task",
 		"taskDetails", newTaskCreatedLog.Task.TaskDetails,
 		"taskIndex", newTaskCreatedLog.TaskIndex,

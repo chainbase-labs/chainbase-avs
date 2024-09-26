@@ -3,15 +3,17 @@ package config
 import (
 	"context"
 	"crypto/ecdsa"
+	"log"
+	"os"
 
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/wallet"
 	"github.com/Layr-Labs/eigensdk-go/chainio/txmgr"
+	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 	"github.com/Layr-Labs/eigensdk-go/signerv2"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/urfave/cli"
 )
 
@@ -43,7 +45,7 @@ type ConfigRaw struct {
 	Environment                 sdklogging.LogLevel `yaml:"environment"`
 	EthRpcUrl                   string              `yaml:"eth_rpc_url"`
 	EthWsUrl                    string              `yaml:"eth_ws_url"`
-	EcdsaPrivateKey             string              `yaml:"ecdsa_private_key"`
+	EcdsaPrivateKeyStorePath    string              `yaml:"ecdsa_private_key_store_path"`
 	RegistryCoordinatorAddr     string              `yaml:"registry_coordinator_addr"`
 	OperatorStateRetrieverAddr  string              `yaml:"operator_state_retriever_addr"`
 	CoordinatorServerIpPortAddr string              `yaml:"coordinator_server_ip_port_address"`
@@ -83,11 +85,14 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 		return nil, err
 	}
 
-	ecdsaPrivateKeyString := configRaw.EcdsaPrivateKey
-	if ecdsaPrivateKeyString[:2] == "0x" {
-		ecdsaPrivateKeyString = ecdsaPrivateKeyString[2:]
+	ecdsaKeyPassword, ok := os.LookupEnv("COORDINATOR_ECDSA_KEY_PASSWORD")
+	if !ok {
+		log.Printf("COORDINATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
-	ecdsaPrivateKey, err := crypto.HexToECDSA(ecdsaPrivateKeyString)
+	ecdsaPrivateKey, err := sdkecdsa.ReadKey(
+		configRaw.EcdsaPrivateKeyStorePath,
+		ecdsaKeyPassword,
+	)
 	if err != nil {
 		logger.Error("Cannot parse ecdsa private key", "err", err)
 		return nil, err

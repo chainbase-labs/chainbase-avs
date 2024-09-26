@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"net"
 
@@ -43,7 +44,7 @@ func (c *Coordinator) startServer(_ context.Context) error {
 
 // ProcessSignedTaskResponse rpc endpoint which is called by manuscript node
 func (c *Coordinator) ProcessSignedTaskResponse(ctx context.Context, signedTaskResponse *coordinatorpb.SignedTaskResponseRequest) (*coordinatorpb.SignedTaskResponseReply, error) {
-	c.logger.Infof("Received signed task response: %#v", signedTaskResponse)
+	c.logger.Infof("Received signed task response from operator %s", hex.EncodeToString(signedTaskResponse.OperatorId))
 
 	taskResponse := bindings.IChainbaseServiceManagerTaskResponse{
 		ReferenceTaskIndex: signedTaskResponse.TaskResponse.ReferenceTaskIndex,
