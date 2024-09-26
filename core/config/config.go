@@ -29,9 +29,13 @@ type Config struct {
 	RegistryCoordinatorAddr     common.Address
 	CoordinatorServerIpPortAddr string
 	// json:"-" skips this field when marshaling (only used for logging to stdout), since SignerFn doesnt implement marshalJson
-	SignerFn           signerv2.SignerFn `json:"-"`
-	TxMgr              txmgr.TxManager   `json:"-"`
-	CoordinatorAddress common.Address
+	SignerFn            signerv2.SignerFn `json:"-"`
+	TxMgr               txmgr.TxManager   `json:"-"`
+	CoordinatorAddress  common.Address
+	FlinkGatewayHttpUrl string
+	OssAccessKeyId      string `json:"-"`
+	OssAccessKeySecret  string `json:"-"`
+	TaskChains          []string
 }
 
 // ConfigRaw These are read from ConfigFileFlag
@@ -43,6 +47,10 @@ type ConfigRaw struct {
 	RegistryCoordinatorAddr     string              `yaml:"registry_coordinator_addr"`
 	OperatorStateRetrieverAddr  string              `yaml:"operator_state_retriever_addr"`
 	CoordinatorServerIpPortAddr string              `yaml:"coordinator_server_ip_port_address"`
+	FlinkGatewayHttpUrl         string              `yaml:"flink_gateway_http_url"`
+	OssAccessKeyId              string              `yaml:"oss_access_key_id"`
+	OssAccessKeySecret          string              `yaml:"oss_access_key_secret"`
+	TaskChains                  []string            `yaml:"task_chains"`
 }
 
 // NewConfig parses config file to read from from flags or environment variables
@@ -120,6 +128,10 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 		SignerFn:                    signerV2,
 		TxMgr:                       txMgr,
 		CoordinatorAddress:          coordinatorAddr,
+		FlinkGatewayHttpUrl:         configRaw.FlinkGatewayHttpUrl,
+		OssAccessKeyId:              configRaw.OssAccessKeyId,
+		OssAccessKeySecret:          configRaw.OssAccessKeySecret,
+		TaskChains:                  configRaw.TaskChains,
 	}
 	config.validate()
 	return config, nil

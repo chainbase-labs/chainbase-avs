@@ -2,6 +2,8 @@ package coordinator
 
 import (
 	"context"
+	"errors"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -77,6 +79,8 @@ type Coordinator struct {
 	tasksMu               sync.RWMutex
 	taskResponses         map[types.TaskIndex]map[sdktypes.TaskResponseDigest]bindings.IChainbaseServiceManagerTaskResponse
 	taskResponsesMu       sync.RWMutex
+	flinkClient           *FlinkClient
+	taskChains            []string
 }
 
 // NewCoordinator creates a new Coordinator with the provided config.
@@ -128,6 +132,11 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 	operatorPubkeysService := oprsinfoserv.NewOperatorsInfoServiceInMemory(context.Background(), chainClients.AvsRegistryChainSubscriber, chainClients.AvsRegistryChainReader, nil, c.Logger)
 	avsRegistryService := avsregistry.NewAvsRegistryServiceChainCaller(avsReader, operatorPubkeysService, c.Logger)
 	blsAggregationService := blsagg.NewBlsAggregatorService(avsRegistryService, hashFunction, c.Logger)
+	flinkClient := NewFlinkClient(c.FlinkGatewayHttpUrl, c.OssAccessKeyId, c.OssAccessKeySecret)
+
+	if len(c.TaskChains) == 0 {
+		return nil, errors.New("no available task chains")
+	}
 
 	return &Coordinator{
 		logger:                c.Logger,
@@ -140,6 +149,8 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 		blsAggregationService: blsAggregationService,
 		tasks:                 make(map[types.TaskIndex]bindings.IChainbaseServiceManagerTask),
 		taskResponses:         make(map[types.TaskIndex]map[sdktypes.TaskResponseDigest]bindings.IChainbaseServiceManagerTaskResponse),
+		flinkClient:           flinkClient,
+		taskChains:            c.TaskChains,
 	}, nil
 }
 
@@ -200,14 +211,24 @@ func (c *Coordinator) Start(ctx context.Context) error {
 }
 
 func (c *Coordinator) createNewTask() (string, error) {
-	// TODO generate task
+	randomIndex := rand.Intn(len(c.taskChains))
+	chain := c.taskChains[randomIndex]
+
+	c.logger.Infof("Getting %s latest block height", chain)
+	latestBlockHeight, err := c.flinkClient.GetChainLatestBlockHeight(chain)
+	if err != nil {
+		c.logger.Error("Failed to get latest block height", "chain", chain, "err", err)
+		return "", err
+	}
+	c.logger.Infof("%s latest block height: %d", chain, latestBlockHeight)
+
 	taskDetails := core.GenerateTaskDetails(&core.TaskDetails{
 		Version:    "v1",
-		Chain:      "zkevm",
+		Chain:      chain,
 		TaskType:   "block",
 		Method:     "merkle",
-		StartBlock: 10000,
-		EndBlock:   10010,
+		StartBlock: int(latestBlockHeight),
+		EndBlock:   int(latestBlockHeight) + 100,
 		Difficulty: 10,
 		Deadline:   time.Now().Add(12 * time.Hour).Unix(),
 	})

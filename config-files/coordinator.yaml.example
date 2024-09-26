@@ -8,3 +8,10 @@ operator_state_retriever_addr: 0x3e302917A4d007eAF367c182226Da217E9639d38
 registry_coordinator_addr: 0xb8B9351a6D21fd9b3249713353ACf430BE2e6bBc
 # generator and aggregator private key
 ecdsa_private_key: 0xyourprivatekey
+flink_gateway_http_url: http://localhost:8083
+oss_access_key_id: id
+oss_access_key_secret: secret
+task_chains:
+  - bevm
+  - zkevm
+  - holesky

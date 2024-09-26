@@ -7,6 +7,8 @@ services:
     user: "flink"
     command: "./bin/jobmanager.sh start-foreground ; ./bin/sql-gateway.sh start -Dsql-gateway.endpoint.rest.address=localhost"
     #command: "sleep 1000"
+    ports:
+      - "8083:8083"
     volumes:
       - ./tmp:/opt/flink/tmp
       - ./statuspoint/checkpoint:/opt/flink/checkpoint
