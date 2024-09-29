@@ -312,6 +312,11 @@ func (c *Coordinator) handleNewTaskCreatedLog(ctx context.Context, newTaskCreate
 func (c *Coordinator) sendAggregatedResponseToContract(blsAggServiceResp blsagg.BlsAggregationServiceResponse) {
 	if blsAggServiceResp.Err != nil {
 		c.logger.Error("BlsAggregationServiceResponse contains an error", "err", blsAggServiceResp.Err)
+		return
+	}
+	if blsAggServiceResp.TaskResponse == nil {
+		c.logger.Error("Invalid task response")
+		return
 	}
 	nonSignerPubkeys := []bindings.BN254G1Point{}
 	for _, nonSignerPubkey := range blsAggServiceResp.NonSignersPubkeysG1 {
