@@ -82,7 +82,7 @@ type ManuscriptNode struct {
 	db *sql.DB
 }
 
-func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
+func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, error) {
 	var logLevel logging.LogLevel
 	if c.Production {
 		logLevel = sdklogging.Production
@@ -211,18 +211,6 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 	dataSource := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		c.PostgresHost, c.PostgresPort, c.PostgresUser, c.PostgresPassword, c.PostgresDatabase)
 
-	db, err := sql.Open("postgres", dataSource)
-	if err != nil {
-		log.Fatal("Error connecting to the database: ", err)
-	}
-
-	err = db.Ping()
-	if err != nil {
-		log.Fatal("Error pinging the database: ", err)
-	}
-
-	fmt.Println("Successfully connected to the database")
-
 	msNode := &ManuscriptNode{
 		config:                      c,
 		logger:                      logger,
@@ -244,7 +232,21 @@ func NewNodeFromConfig(c types.NodeConfig) (*ManuscriptNode, error) {
 		operatorId:                  [32]byte{0}, // this is set below
 		taskJobIDs:                  make(map[types.TaskIndex]string),
 		dockerClient:                cli,
-		db:                          db,
+	}
+
+	if !cliCommand {
+		db, err := sql.Open("postgres", dataSource)
+		if err != nil {
+			log.Fatal("Error connecting to the database: ", err)
+		}
+
+		err = db.Ping()
+		if err != nil {
+			log.Fatal("Error pinging the database: ", err)
+		}
+
+		msNode.db = db
+		fmt.Println("Successfully connected to the database")
 	}
 
 	// OperatorId is set in contract during registration so we get it after registering operator.

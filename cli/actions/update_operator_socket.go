@@ -26,7 +26,7 @@ func UpdateOperatorSocket(ctx *cli.Context) error {
 	}
 	log.Println("Config:", string(configJson))
 
-	manuscriptNode, err := node.NewNodeFromConfig(nodeConfig)
+	manuscriptNode, err := node.NewNodeFromConfig(nodeConfig, true)
 	if err != nil {
 		return err
 	}
