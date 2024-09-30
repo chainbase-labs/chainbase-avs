@@ -168,7 +168,7 @@ func (c *Coordinator) Start(ctx context.Context) error {
 	// subscribe to onchain event
 	sub := c.avsSubscriber.SubscribeToNewTasks(c.newTaskCreatedChan)
 	// ticker for creating new task
-	ticker := time.NewTicker(2 * time.Hour)
+	ticker := time.NewTicker(15 * time.Minute)
 	c.logger.Infof("Coordinator set to send new task every 2 hours")
 	defer ticker.Stop()
 

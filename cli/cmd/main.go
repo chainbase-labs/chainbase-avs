@@ -56,6 +56,13 @@ func main() {
 			Aliases: []string{"u"},
 			Usage:   "update operator socket to node_server_ip_port_address value in config file",
 			Action:  actions.UpdateOperatorSocket,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:     "socket",
+					Usage:    "public address and port of the node gRPC server.",
+					Required: true,
+				},
+			},
 		},
 		{
 			Name:    "print-operator-status",

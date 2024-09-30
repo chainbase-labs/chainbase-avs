@@ -124,8 +124,7 @@ func (n *ManuscriptNode) PrintOperatorStatus() error {
 }
 
 // UpdateOperatorSocket update operator socket
-func (n *ManuscriptNode) UpdateOperatorSocket() error {
-	socket := n.nodeServerIpPortAddr
+func (n *ManuscriptNode) UpdateOperatorSocket(socket string) error {
 	avsRegistryChainWriter := n.avsWriter.AvsRegistryWriter.(*avsregistry.AvsRegistryChainWriter)
 	_, err := avsRegistryChainWriter.UpdateSocket(
 		context.Background(),

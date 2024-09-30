@@ -64,9 +64,10 @@ func (c *CoordinatorRpcClient) SendSignedTaskResponseToCoordinator(signedTaskRes
 		response, err := c.rpcClient.ProcessSignedTaskResponse(context.Background(), signedTaskResponse)
 		if err != nil {
 			c.logger.Info("Received error from coordinator", "err", err)
+			continue
 		}
 
-		if response.Success {
+		if response != nil && response.Success {
 			c.logger.Info("Signed task response accepted by coordinator.")
 			c.metrics.IncNumTasksAcceptedByCoordinator()
 			return
