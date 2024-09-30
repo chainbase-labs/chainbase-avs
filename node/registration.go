@@ -70,7 +70,7 @@ func (n *ManuscriptNode) RegisterOperatorWithAvs(
 ) error {
 	// hardcode these things for now
 	quorumNumbers := eigenSdkTypes.QuorumNums{eigenSdkTypes.QuorumNum(0)}
-	socket := n.nodeServerIpPortAddr
+	socket := n.nodeSocket
 	_, err := n.avsWriter.RegisterOperator(
 		context.Background(),
 		operatorEcdsaKeyPair,
@@ -124,11 +124,11 @@ func (n *ManuscriptNode) PrintOperatorStatus() error {
 }
 
 // UpdateOperatorSocket update operator socket
-func (n *ManuscriptNode) UpdateOperatorSocket(socket string) error {
+func (n *ManuscriptNode) UpdateOperatorSocket() error {
 	avsRegistryChainWriter := n.avsWriter.AvsRegistryWriter.(*avsregistry.AvsRegistryChainWriter)
 	_, err := avsRegistryChainWriter.UpdateSocket(
 		context.Background(),
-		eigenSdkTypes.Socket(socket),
+		eigenSdkTypes.Socket(n.nodeSocket),
 	)
 	if err != nil {
 		n.logger.Errorf("Unable to update operator socket")

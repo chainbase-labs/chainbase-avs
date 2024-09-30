@@ -14,7 +14,7 @@ import (
 )
 
 func (n *ManuscriptNode) startServer(_ context.Context) error {
-	listener, err := net.Listen("tcp", n.nodeServerIpPortAddr)
+	listener, err := net.Listen("tcp", n.nodeGrpcServerAddress)
 	if err != nil {
 		n.logger.Fatal("Failed to listen", "err", err)
 	}

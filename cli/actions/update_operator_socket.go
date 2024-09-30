@@ -31,8 +31,7 @@ func UpdateOperatorSocket(ctx *cli.Context) error {
 		return err
 	}
 
-	socket := ctx.String("socket")
-	err = manuscriptNode.UpdateOperatorSocket(socket)
+	err = manuscriptNode.UpdateOperatorSocket()
 	if err != nil {
 		return err
 	}

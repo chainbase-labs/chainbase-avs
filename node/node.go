@@ -69,9 +69,11 @@ type ManuscriptNode struct {
 	TaskResponseChan chan *bindings.IChainbaseServiceManagerTaskResponse
 	// ip address of coordinator
 	coordinatorServerIpPortAddr string
+	// node grpc server address
+	nodeGrpcServerAddress string
 	// nodeServerIpPortAddr is the IP address and port of the Node gRPC server.
 	// This public address is submitted to the contract during the RegisterOperatorWithAvs and can be requested by the coordinator.
-	nodeServerIpPortAddr string
+	nodeSocket string
 	// rpc client to send signed task responses to coordinator
 	coordinatorRpcClient CoordinatorRpcClienter
 	// task flink jobID
@@ -225,7 +227,8 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 		blsKeypair:                  blsKeyPair,
 		operatorAddr:                common.HexToAddress(c.OperatorAddress),
 		coordinatorServerIpPortAddr: c.CoordinatorServerIpPortAddress,
-		nodeServerIpPortAddr:        c.NodeServerIpPortAddress,
+		nodeGrpcServerAddress:       c.NodeGrpcServerAddress,
+		nodeSocket:                  c.NodeSocket,
 		coordinatorRpcClient:        coordinatorRpcClient,
 		newTaskCreatedChan:          make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
 		TaskResponseChan:            make(chan *bindings.IChainbaseServiceManagerTaskResponse),
@@ -276,7 +279,7 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 	if !operatorIsRegistered {
 		// We bubble the error all the way up instead of using logger.Fatal because logger.Fatal prints a huge stack trace
 		// that hides the actual error message. This error msg is more explicit and doesn't require showing a stack trace to the user.
-		return fmt.Errorf("operator is not registered. Registering operator using the operator-cli before starting operator")
+		return fmt.Errorf("operator is not registered. Registering operator using the chainbase-cli before starting operator")
 	}
 
 	n.logger.Infof("Starting operator.")

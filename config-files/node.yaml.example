@@ -13,9 +13,11 @@ bls_private_key_store_path: /home/user/.eigenlayer/operator_keys/test.bls.key.js
 
 # address which the coordinator listens on for manuscript node signed messages
 coordinator_server_ip_port_address: localhost:8090
+# node groc server address
+node_grpc_server_address: :8011
 # ip address and port of the Node gRPC server.
 # This public address is submitted to the contract during the RegisterOperatorWithAvs and can be requested by the coordinator.
-node_server_ip_port_address: :8010
+node_socket: 8.219.81.93:8011
 
 # avs node spec compliance https://eigen.nethermind.io/docs/spec/intro
 eigen_metrics_ip_port_address: localhost:9090

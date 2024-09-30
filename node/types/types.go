@@ -15,7 +15,8 @@ type NodeConfig struct {
 	EnableMetrics                  bool   `yaml:"enable_metrics"`
 	NodeApiIpPortAddress           string `yaml:"node_api_ip_port_address"`
 	EnableNodeApi                  bool   `yaml:"enable_node_api"`
-	NodeServerIpPortAddress        string `yaml:"node_server_ip_port_address"`
+	NodeGrpcServerAddress          string `yaml:"node_grpc_server_address"`
+	NodeSocket                     string `yaml:"node_socket"`
 	PostgresHost                   string `yaml:"postgres_host"`
 	PostgresPort                   string `yaml:"postgres_port"`
 	PostgresUser                   string `yaml:"postgres_user"`
