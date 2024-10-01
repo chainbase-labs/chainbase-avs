@@ -5,16 +5,13 @@ services:
     container_name: chainbase_jobmanager
     hostname: chainbase_jobmanager
     user: "flink"
-    command: "./bin/jobmanager.sh start-foreground ; ./bin/sql-gateway.sh start -Dsql-gateway.endpoint.rest.address=localhost"
-    #command: "sleep 1000"
-    ports:
-      - "8083:8083"
+    command: "./bin/jobmanager.sh start-foreground"
     volumes:
       - ./tmp:/opt/flink/tmp
       - ./statuspoint/checkpoint:/opt/flink/checkpoint
       - ./statuspoint/savepoint:/opt/flink/savepoint
       - ./log:/opt/flink/log
-      - ./proof:/opt/proof
+      - ./proof/target/proof-1.0-SNAPSHOT.jar:/opt/proof/proof-1.0-SNAPSHOT.jar
     networks:
       - avs_network
 

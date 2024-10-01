@@ -367,8 +367,8 @@ func (n *ManuscriptNode) ExecuteTask(taskIndex uint32, taskDetails *core.TaskDet
 	cmd := []string{
 		"/bin/sh",
 		"-c",
-		fmt.Sprintf("./bin/flink run -py /opt/proof/streaming.py --task_index %d --chain %s --start_at %d --end_at %d --difficulty %d",
-			taskIndex, taskDetails.Chain, taskDetails.StartBlock, taskDetails.EndBlock, taskDetails.Difficulty),
+		fmt.Sprintf("./bin/flink run /opt/proof/proof-1.0-SNAPSHOT.jar %s %d %d %d %d",
+			taskDetails.Chain, taskDetails.StartBlock, taskDetails.EndBlock, taskDetails.Difficulty, taskIndex),
 	}
 	execConfig := dockerTypes.ExecConfig{
 		AttachStdout: true,
