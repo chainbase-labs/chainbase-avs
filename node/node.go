@@ -343,12 +343,14 @@ func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.Ch
 
 	if err := n.WaitTaskCompletion(newTaskCreatedLog.TaskIndex, parsedTaskDetails); err != nil {
 		n.logger.Error("Error wait task completion", "err", err)
+		n.CancelTaskJob(newTaskCreatedLog.TaskIndex)
 		return
 	}
 
 	response, err := n.QueryTaskResponse(newTaskCreatedLog.TaskIndex)
 	if err != nil {
 		n.logger.Error("Error query task response", "err", err)
+		n.CancelTaskJob(newTaskCreatedLog.TaskIndex)
 		return
 	}
 
