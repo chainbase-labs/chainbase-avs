@@ -420,6 +420,7 @@ func (n *ManuscriptNode) WaitTaskCompletion(taskIndex uint32, taskDetails *core.
 		rows, err := n.db.Query(query, taskIndex)
 		if err != nil {
 			n.logger.Error("Error query task response", "err", err)
+			continue
 		}
 		rowsCount := 0
 		for rows.Next() {
