@@ -51,6 +51,7 @@ func (c *CoordinatorRpcClient) SendSignedTaskResponseToCoordinator(signedTaskRes
 		c.logger.Info("rpc client is nil. Dialing coordinator rpc client")
 		err := c.dialCoordinatorRpcClient()
 		if err != nil {
+			c.metrics.IncNumTaskFailed()
 			c.logger.Error("Could not dial coordinator rpc client. Not sending signed task response header to coordinator. Is coordinator running?", "err", err)
 			return
 		}
@@ -69,11 +70,12 @@ func (c *CoordinatorRpcClient) SendSignedTaskResponseToCoordinator(signedTaskRes
 
 		if response != nil && response.Success {
 			c.logger.Info("Signed task response accepted by coordinator.")
-			c.metrics.IncNumTasksAcceptedByCoordinator()
+			c.metrics.IncNumTaskSucceed()
 			return
 		}
 		c.logger.Infof("Retrying in 2 seconds")
 		time.Sleep(2 * time.Second)
 	}
+	c.metrics.IncNumTaskFailed()
 	c.logger.Error("Could not send signed task response to coordinator. Tried 5 times.")
 }

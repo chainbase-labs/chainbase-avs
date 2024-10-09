@@ -31,3 +31,7 @@ postgres_port: 5432
 postgres_user: postgres
 postgres_password: postgres
 postgres_database: manuscript_node
+
+# job manager container
+job_manager_host: chainbase_jobmanager
+job_manager_port: 8081

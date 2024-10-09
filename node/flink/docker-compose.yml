@@ -4,6 +4,8 @@ services:
     image: repository.chainbase.com/network/flink:v1.18-0.2
     container_name: chainbase_jobmanager
     hostname: chainbase_jobmanager
+    ports:
+      - "8081:8081"
     user: "flink"
     command: "./bin/jobmanager.sh start-foreground"
     volumes:

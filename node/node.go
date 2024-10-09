@@ -45,7 +45,7 @@ import (
 	"github.com/chainbase-labs/chainbase-avs/node/types"
 )
 
-const AvsName = "chainbase"
+const AvsName = "chainbase_avs"
 const SemVer = "0.0.1"
 
 type ManuscriptNode struct {
@@ -82,6 +82,10 @@ type ManuscriptNode struct {
 	dockerClient *dockerClient.Client
 	// postgres db
 	db *sql.DB
+	// job manager host
+	jobManagerHost string
+	// job manager port
+	jobManagerPort string
 }
 
 func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, error) {
@@ -235,6 +239,8 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 		operatorId:                  [32]byte{0}, // this is set below
 		taskJobIDs:                  make(map[types.TaskIndex]string),
 		dockerClient:                cli,
+		jobManagerHost:              c.JobManagerHost,
+		jobManagerPort:              c.JobManagerPort,
 	}
 
 	if !cliCommand {
@@ -297,6 +303,14 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 	var metricsErrChan <-chan error
 	if n.config.EnableMetrics {
 		metricsErrChan = n.metrics.Start(ctx, n.metricsReg)
+		go func() {
+			for {
+				ip, jobManagerStatus := n.metrics.UpdateNodeMetrics(n.operatorAddr.String(), AvsName, n.jobManagerHost, n.jobManagerPort)
+				n.logger.Info("update host metrics", "operator address", n.operatorAddr.String(), "ip", ip, "job_manager_status", jobManagerStatus)
+				time.Sleep(1 * time.Minute)
+			}
+
+		}()
 	} else {
 		metricsErrChan = make(chan error, 1)
 	}
@@ -308,11 +322,12 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 		case err := <-metricsErrChan:
 			n.logger.Fatal("Error in metrics server", "err", err)
 		case newTaskCreatedLog := <-n.newTaskCreatedChan:
-			n.metrics.IncNumTasksReceived()
+			n.metrics.IncNumTaskReceived()
 			go n.ProcessNewTaskCreatedLog(newTaskCreatedLog)
 		case taskResponse := <-n.TaskResponseChan:
 			signedTaskResponse, err := n.SignTaskResponse(taskResponse)
 			if err != nil {
+				n.metrics.IncNumTaskFailed()
 				continue
 			}
 			go n.coordinatorRpcClient.SendSignedTaskResponseToCoordinator(signedTaskResponse)
@@ -332,23 +347,33 @@ func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.Ch
 
 	parsedTaskDetails, err := core.ParseTaskDetails(newTaskCreatedLog.Task.TaskDetails)
 	if err != nil {
+		n.metrics.IncNumTaskFailed()
 		n.logger.Error("Failed to parse task details", "err", err)
 		return
 	}
 
+	executeStartTime := time.Now()
+
 	if err := n.ExecuteTask(newTaskCreatedLog.TaskIndex, parsedTaskDetails); err != nil {
+		n.metrics.IncNumTaskFailed()
 		n.logger.Error("Failed to execute task", "err", err)
 		return
 	}
 
 	if err := n.WaitTaskCompletion(newTaskCreatedLog.TaskIndex, parsedTaskDetails); err != nil {
+		n.metrics.IncNumTaskFailed()
 		n.logger.Error("Error wait task completion", "err", err)
 		n.CancelTaskJob(newTaskCreatedLog.TaskIndex)
 		return
 	}
 
+	executeEndTime := time.Now()
+	executeDuration := executeEndTime.Sub(executeStartTime)
+	n.metrics.ObserveTaskExecutionTime(executeDuration.Minutes())
+
 	response, err := n.QueryTaskResponse(newTaskCreatedLog.TaskIndex)
 	if err != nil {
+		n.metrics.IncNumTaskFailed()
 		n.logger.Error("Error query task response", "err", err)
 		n.CancelTaskJob(newTaskCreatedLog.TaskIndex)
 		return

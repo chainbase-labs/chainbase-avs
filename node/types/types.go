@@ -22,6 +22,8 @@ type NodeConfig struct {
 	PostgresUser                   string `yaml:"postgres_user"`
 	PostgresPassword               string `yaml:"postgres_password"`
 	PostgresDatabase               string `yaml:"postgres_database"`
+	JobManagerHost                 string `yaml:"job_manager_host"`
+	JobManagerPort                 string `yaml:"job_manager_port"`
 }
 
 type TaskIndex = uint32

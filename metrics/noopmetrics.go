@@ -16,4 +16,4 @@ func NewNoopMetrics() *NoopMetrics {
 
 func (m *NoopMetrics) IncNumTasksReceived() {}
 
-func (m *NoopMetrics) IncNumTasksAcceptedByCoordinator() {}
+func (m *NoopMetrics) IncNumTasksSuccess() {}
