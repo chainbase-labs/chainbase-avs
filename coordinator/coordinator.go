@@ -82,6 +82,7 @@ type Coordinator struct {
 	taskResponsesMu       sync.RWMutex
 	flinkClient           *FlinkClient
 	taskChains            []string
+	taskDurationMinutes   int64
 }
 
 // NewCoordinator creates a new Coordinator with the provided config.
@@ -152,6 +153,7 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 		taskResponses:         make(map[types.TaskIndex]map[sdktypes.TaskResponseDigest]bindings.IChainbaseServiceManagerTaskResponse),
 		flinkClient:           flinkClient,
 		taskChains:            c.TaskChains,
+		taskDurationMinutes:   c.TaskDurationMinutes,
 	}, nil
 }
 
@@ -168,7 +170,7 @@ func (c *Coordinator) Start(ctx context.Context) error {
 	// subscribe to onchain event
 	sub := c.avsSubscriber.SubscribeToNewTasks(c.newTaskCreatedChan)
 	// ticker for creating new task
-	ticker := time.NewTicker(15 * time.Minute)
+	ticker := time.NewTicker(time.Duration(c.taskDurationMinutes) * time.Minute)
 	c.logger.Infof("Coordinator set to send new task every 2 hours")
 	defer ticker.Stop()
 
@@ -231,7 +233,7 @@ func (c *Coordinator) createNewTask() (string, error) {
 		StartBlock: int(latestBlockHeight),
 		EndBlock:   int(latestBlockHeight) + 100,
 		Difficulty: 10,
-		Deadline:   time.Now().Add(12 * time.Hour).Unix(),
+		Deadline:   time.Now().Add(time.Duration(c.taskDurationMinutes) * time.Minute).Unix(),
 	})
 	return taskDetails, nil
 }

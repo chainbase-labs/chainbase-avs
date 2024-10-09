@@ -38,6 +38,7 @@ type Config struct {
 	OssAccessKeyId      string `json:"-"`
 	OssAccessKeySecret  string `json:"-"`
 	TaskChains          []string
+	TaskDurationMinutes int64
 }
 
 // ConfigRaw These are read from ConfigFileFlag
@@ -53,6 +54,7 @@ type ConfigRaw struct {
 	OssAccessKeyId              string              `yaml:"oss_access_key_id"`
 	OssAccessKeySecret          string              `yaml:"oss_access_key_secret"`
 	TaskChains                  []string            `yaml:"task_chains"`
+	TaskDurationMinutes         int64               `yaml:"task_duration_minutes"`
 }
 
 // NewConfig parses config file to read from from flags or environment variables
@@ -137,6 +139,7 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 		OssAccessKeyId:              configRaw.OssAccessKeyId,
 		OssAccessKeySecret:          configRaw.OssAccessKeySecret,
 		TaskChains:                  configRaw.TaskChains,
+		TaskDurationMinutes:         configRaw.TaskDurationMinutes,
 	}
 	config.validate()
 	return config, nil

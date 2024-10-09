@@ -15,3 +15,4 @@ task_chains:
   - bevm
   - zkevm
   - holesky
+task_duration_minutes: 15
