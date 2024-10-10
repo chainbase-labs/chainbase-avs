@@ -369,7 +369,7 @@ func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.Ch
 
 	executeEndTime := time.Now()
 	executeDuration := executeEndTime.Sub(executeStartTime)
-	n.metrics.ObserveTaskExecutionTime(executeDuration.Minutes())
+	n.metrics.SetTaskExecutionTime(executeDuration.Minutes())
 
 	response, err := n.QueryTaskResponse(newTaskCreatedLog.TaskIndex)
 	if err != nil {

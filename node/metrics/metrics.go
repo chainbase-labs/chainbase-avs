@@ -11,7 +11,7 @@ type Metrics interface {
 	IncNumTaskReceived()
 	IncNumTaskSucceed()
 	IncNumTaskFailed()
-	ObserveTaskExecutionTime(executionTime float64)
+	SetTaskExecutionTime(executionTime float64)
 	UpdateNodeMetrics(operatorAddress, jobName, jobManagerHost, jobManagerPort string) (string, float64)
 }
 
@@ -23,7 +23,7 @@ type AvsAndEigenMetrics struct {
 	// if numTaskSucceed != numTaskReceived, then there is a bug
 	numTaskSucceed    prometheus.Counter
 	numTaskFailed     prometheus.Counter
-	taskExecutionTime prometheus.Histogram
+	taskExecutionTime prometheus.Gauge
 	// remote metrics
 	nodeInfo         *prometheus.GaugeVec
 	memoryTotal      *prometheus.GaugeVec
@@ -51,17 +51,12 @@ func NewAvsAndEigenMetrics(avsName string, eigenMetrics *metrics.EigenMetrics, r
 				Name:      "num_task_failed",
 				Help:      "The number of task execute failed",
 			}),
-		taskExecutionTime: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
-			Name: "task_execution_time_minutes",
-			Help: "Histogram of task execution times in minutes",
-			Buckets: []float64{
-				5,    // less than 5 minutes
-				15,   // 5-15 minutes
-				30,   // 15-30 minutes
-				60,   // 30-60 minutes
-				60.1, // more than 1 hour
-			},
-		}),
+		taskExecutionTime: promauto.With(reg).NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: avsName,
+				Name:      "task_execution_time_minutes",
+				Help:      "Task execution time in minutes",
+			}),
 		nodeInfo: promauto.With(reg).NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: avsName,
@@ -101,8 +96,8 @@ func (m *AvsAndEigenMetrics) IncNumTaskFailed() {
 	m.numTaskSucceed.Inc()
 }
 
-func (m *AvsAndEigenMetrics) ObserveTaskExecutionTime(executionTime float64) {
-	m.taskExecutionTime.Observe(executionTime)
+func (m *AvsAndEigenMetrics) SetTaskExecutionTime(executionTime float64) {
+	m.taskExecutionTime.Set(executionTime)
 }
 
 func (m *AvsAndEigenMetrics) UpdateNodeMetrics(operatorAddress, jobName, jobManagerHost, jobManagerPort string) (string, float64) {
