@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	nodepb "github.com/chainbase-labs/chainbase-avs/api/grpc/node"
-	"github.com/chainbase-labs/chainbase-avs/metrics"
+	"github.com/chainbase-labs/chainbase-avs/coordinator/metrics"
 )
 
 type ManuscriptRpcClienter interface {

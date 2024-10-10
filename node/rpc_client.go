@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	coordinatorpb "github.com/chainbase-labs/chainbase-avs/api/grpc/coordinator"
-	"github.com/chainbase-labs/chainbase-avs/metrics"
+	"github.com/chainbase-labs/chainbase-avs/node/metrics"
 )
 
 type CoordinatorRpcClienter interface {

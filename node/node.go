@@ -41,7 +41,7 @@ import (
 	"github.com/chainbase-labs/chainbase-avs/contracts/bindings"
 	"github.com/chainbase-labs/chainbase-avs/core"
 	"github.com/chainbase-labs/chainbase-avs/core/chainio"
-	"github.com/chainbase-labs/chainbase-avs/metrics"
+	"github.com/chainbase-labs/chainbase-avs/node/metrics"
 	"github.com/chainbase-labs/chainbase-avs/node/types"
 )
 

@@ -12,23 +12,24 @@ import (
 	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	"github.com/Layr-Labs/eigensdk-go/logging"
+	sdkmetrics "github.com/Layr-Labs/eigensdk-go/metrics"
 	"github.com/Layr-Labs/eigensdk-go/services/avsregistry"
 	blsagg "github.com/Layr-Labs/eigensdk-go/services/bls_aggregation"
 	oprsinfoserv "github.com/Layr-Labs/eigensdk-go/services/operatorsinfo"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+	"github.com/prometheus/client_golang/prometheus"
 
 	coordinatorpb "github.com/chainbase-labs/chainbase-avs/api/grpc/coordinator"
 	nodepb "github.com/chainbase-labs/chainbase-avs/api/grpc/node"
 	"github.com/chainbase-labs/chainbase-avs/contracts/bindings"
+	"github.com/chainbase-labs/chainbase-avs/coordinator/metrics"
 	"github.com/chainbase-labs/chainbase-avs/coordinator/types"
 	"github.com/chainbase-labs/chainbase-avs/core"
 	"github.com/chainbase-labs/chainbase-avs/core/chainio"
 	"github.com/chainbase-labs/chainbase-avs/core/config"
 )
 
-const (
-	avsName = "Chainbase"
-)
+const AvsName = "chainbase_coordinator"
 
 // Coordinator sends tasks onchain, then listens for operator signed TaskResponses.
 // It aggregates responses signatures, and if any of the TaskResponses reaches the QuorumThresholdPercentage for each quorum
@@ -83,6 +84,8 @@ type Coordinator struct {
 	flinkClient           *FlinkClient
 	taskChains            []string
 	taskDurationMinutes   int64
+	metricsReg            *prometheus.Registry
+	metrics               metrics.Metrics
 }
 
 // NewCoordinator creates a new Coordinator with the provided config.
@@ -112,8 +115,8 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 		EthWsUrl:                   c.EthWsRpcUrl,
 		RegistryCoordinatorAddr:    c.RegistryCoordinatorAddr.String(),
 		OperatorStateRetrieverAddr: c.OperatorStateRetrieverAddr.String(),
-		AvsName:                    avsName,
-		PromMetricsIpPortAddress:   ":9090",
+		AvsName:                    AvsName,
+		PromMetricsIpPortAddress:   c.CoordinatorMetricsIpPortAddress,
 	}
 	chainClients, err := clients.BuildAll(chainConfig, c.EcdsaPrivateKey, c.Logger)
 	if err != nil {
@@ -140,6 +143,10 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 		return nil, errors.New("no available task chains")
 	}
 
+	reg := prometheus.NewRegistry()
+	eigenMetrics := sdkmetrics.NewEigenMetrics(AvsName, c.CoordinatorMetricsIpPortAddress, reg, c.Logger)
+	coordinatorMetrics := metrics.NewCoordinatorMetrics(AvsName, eigenMetrics, reg)
+
 	return &Coordinator{
 		logger:                c.Logger,
 		serverIpPortAddr:      c.CoordinatorServerIpPortAddr,
@@ -154,6 +161,8 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 		flinkClient:           flinkClient,
 		taskChains:            c.TaskChains,
 		taskDurationMinutes:   c.TaskDurationMinutes,
+		metricsReg:            reg,
+		metrics:               coordinatorMetrics,
 	}, nil
 }
 
@@ -166,6 +175,9 @@ func (c *Coordinator) Start(ctx context.Context) error {
 			c.logger.Error("Starting coordinator rpc server error", "err", err)
 		}
 	}()
+
+	var metricsErrChan <-chan error
+	metricsErrChan = c.metrics.Start(ctx, c.metricsReg)
 
 	// subscribe to onchain event
 	sub := c.avsSubscriber.SubscribeToNewTasks(c.newTaskCreatedChan)
@@ -184,6 +196,8 @@ func (c *Coordinator) Start(ctx context.Context) error {
 
 	for {
 		select {
+		case err := <-metricsErrChan:
+			c.logger.Fatal("Error in metrics server", "err", err)
 		case <-ticker.C:
 			taskDetails, err = c.createNewTask()
 			if err != nil {
@@ -253,6 +267,9 @@ func (c *Coordinator) sendNewTask(taskDetails string) error {
 	c.tasks[taskIndex] = newTask
 	c.tasksMu.Unlock()
 
+	// metrics
+	c.metrics.IncNumTaskCreated()
+
 	quorumThresholdPercentages := make(sdktypes.QuorumThresholdPercentages, len(newTask.QuorumNumbers))
 	for i := range newTask.QuorumNumbers {
 		quorumThresholdPercentages[i] = sdktypes.QuorumThresholdPercentage(newTask.QuorumThresholdPercentage)
@@ -291,7 +308,7 @@ func (c *Coordinator) handleNewTaskCreatedLog(ctx context.Context, newTaskCreate
 	for _, avsState := range operatorsAvsStateDict {
 		c.logger.Info("manuscript node", "OperatorId", hex.EncodeToString(avsState.OperatorId[:]), "Socket", avsState.OperatorInfo.Socket)
 
-		nodeRpcClient, err := NewManuscriptRpcClient(avsState.OperatorInfo.Socket.String(), c.logger, nil)
+		nodeRpcClient, err := NewManuscriptRpcClient(avsState.OperatorInfo.Socket.String(), c.logger, c.metrics)
 		if err != nil {
 			c.logger.Error("Cannot create ManuscriptRpcClient. Is manuscript node running?", "err", err)
 			return err
@@ -352,5 +369,7 @@ func (c *Coordinator) sendAggregatedResponseToContract(blsAggServiceResp blsagg.
 	if err != nil {
 		c.logger.Error("Coordinator failed to respond to task", "err", err)
 	}
+	// metrics
+	c.metrics.IncNumTaskCompleted()
 	c.logger.Info("Aggregated response has been successfully sent to ChainbaseServiceManager contract.")
 }

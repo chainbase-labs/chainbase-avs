@@ -31,30 +31,32 @@ type Config struct {
 	RegistryCoordinatorAddr     common.Address
 	CoordinatorServerIpPortAddr string
 	// json:"-" skips this field when marshaling (only used for logging to stdout), since SignerFn doesnt implement marshalJson
-	SignerFn            signerv2.SignerFn `json:"-"`
-	TxMgr               txmgr.TxManager   `json:"-"`
-	CoordinatorAddress  common.Address
-	FlinkGatewayHttpUrl string
-	OssAccessKeyId      string `json:"-"`
-	OssAccessKeySecret  string `json:"-"`
-	TaskChains          []string
-	TaskDurationMinutes int64
+	SignerFn                        signerv2.SignerFn `json:"-"`
+	TxMgr                           txmgr.TxManager   `json:"-"`
+	CoordinatorAddress              common.Address
+	FlinkGatewayHttpUrl             string
+	OssAccessKeyId                  string `json:"-"`
+	OssAccessKeySecret              string `json:"-"`
+	TaskChains                      []string
+	TaskDurationMinutes             int64
+	CoordinatorMetricsIpPortAddress string
 }
 
 // ConfigRaw These are read from ConfigFileFlag
 type ConfigRaw struct {
-	Environment                 sdklogging.LogLevel `yaml:"environment"`
-	EthRpcUrl                   string              `yaml:"eth_rpc_url"`
-	EthWsUrl                    string              `yaml:"eth_ws_url"`
-	EcdsaPrivateKeyStorePath    string              `yaml:"ecdsa_private_key_store_path"`
-	RegistryCoordinatorAddr     string              `yaml:"registry_coordinator_addr"`
-	OperatorStateRetrieverAddr  string              `yaml:"operator_state_retriever_addr"`
-	CoordinatorServerIpPortAddr string              `yaml:"coordinator_server_ip_port_address"`
-	FlinkGatewayHttpUrl         string              `yaml:"flink_gateway_http_url"`
-	OssAccessKeyId              string              `yaml:"oss_access_key_id"`
-	OssAccessKeySecret          string              `yaml:"oss_access_key_secret"`
-	TaskChains                  []string            `yaml:"task_chains"`
-	TaskDurationMinutes         int64               `yaml:"task_duration_minutes"`
+	Environment                     sdklogging.LogLevel `yaml:"environment"`
+	EthRpcUrl                       string              `yaml:"eth_rpc_url"`
+	EthWsUrl                        string              `yaml:"eth_ws_url"`
+	EcdsaPrivateKeyStorePath        string              `yaml:"ecdsa_private_key_store_path"`
+	RegistryCoordinatorAddr         string              `yaml:"registry_coordinator_addr"`
+	OperatorStateRetrieverAddr      string              `yaml:"operator_state_retriever_addr"`
+	CoordinatorServerIpPortAddr     string              `yaml:"coordinator_server_ip_port_address"`
+	FlinkGatewayHttpUrl             string              `yaml:"flink_gateway_http_url"`
+	OssAccessKeyId                  string              `yaml:"oss_access_key_id"`
+	OssAccessKeySecret              string              `yaml:"oss_access_key_secret"`
+	TaskChains                      []string            `yaml:"task_chains"`
+	TaskDurationMinutes             int64               `yaml:"task_duration_minutes"`
+	CoordinatorMetricsIpPortAddress string              `yaml:"coordinator_metrics_ip_port_address"`
 }
 
 // NewConfig parses config file to read from from flags or environment variables
@@ -123,23 +125,24 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, coordinatorAddr)
 
 	config := &Config{
-		EcdsaPrivateKey:             ecdsaPrivateKey,
-		Logger:                      logger,
-		EthWsRpcUrl:                 configRaw.EthWsUrl,
-		EthHttpRpcUrl:               configRaw.EthRpcUrl,
-		EthHttpClient:               ethRpcClient,
-		EthWsClient:                 ethWsClient,
-		OperatorStateRetrieverAddr:  common.HexToAddress(configRaw.OperatorStateRetrieverAddr),
-		RegistryCoordinatorAddr:     common.HexToAddress(configRaw.RegistryCoordinatorAddr),
-		CoordinatorServerIpPortAddr: configRaw.CoordinatorServerIpPortAddr,
-		SignerFn:                    signerV2,
-		TxMgr:                       txMgr,
-		CoordinatorAddress:          coordinatorAddr,
-		FlinkGatewayHttpUrl:         configRaw.FlinkGatewayHttpUrl,
-		OssAccessKeyId:              configRaw.OssAccessKeyId,
-		OssAccessKeySecret:          configRaw.OssAccessKeySecret,
-		TaskChains:                  configRaw.TaskChains,
-		TaskDurationMinutes:         configRaw.TaskDurationMinutes,
+		EcdsaPrivateKey:                 ecdsaPrivateKey,
+		Logger:                          logger,
+		EthWsRpcUrl:                     configRaw.EthWsUrl,
+		EthHttpRpcUrl:                   configRaw.EthRpcUrl,
+		EthHttpClient:                   ethRpcClient,
+		EthWsClient:                     ethWsClient,
+		OperatorStateRetrieverAddr:      common.HexToAddress(configRaw.OperatorStateRetrieverAddr),
+		RegistryCoordinatorAddr:         common.HexToAddress(configRaw.RegistryCoordinatorAddr),
+		CoordinatorServerIpPortAddr:     configRaw.CoordinatorServerIpPortAddr,
+		SignerFn:                        signerV2,
+		TxMgr:                           txMgr,
+		CoordinatorAddress:              coordinatorAddr,
+		FlinkGatewayHttpUrl:             configRaw.FlinkGatewayHttpUrl,
+		OssAccessKeyId:                  configRaw.OssAccessKeyId,
+		OssAccessKeySecret:              configRaw.OssAccessKeySecret,
+		TaskChains:                      configRaw.TaskChains,
+		TaskDurationMinutes:             configRaw.TaskDurationMinutes,
+		CoordinatorMetricsIpPortAddress: configRaw.CoordinatorMetricsIpPortAddress,
 	}
 	config.validate()
 	return config, nil

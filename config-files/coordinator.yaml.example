@@ -16,3 +16,4 @@ task_chains:
   - zkevm
   - holesky
 task_duration_minutes: 15
+coordinator_metrics_ip_port_address: :9090
