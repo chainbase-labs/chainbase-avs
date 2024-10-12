@@ -147,7 +147,7 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
             // signed stake > total stake
             require(
                 quorumStakeTotals.signedStakeForQuorum[i] * _THRESHOLD_DENOMINATOR
-                    >= quorumStakeTotals.totalStakeForQuorum[i] * uint8(quorumThresholdPercentage),
+                     >= quorumStakeTotals.totalStakeForQuorum[i] * quorumThresholdPercentage,
                 "ChainbaseServiceManager: signatories do not own at least threshold percentage of a quorum"
             );
         }
