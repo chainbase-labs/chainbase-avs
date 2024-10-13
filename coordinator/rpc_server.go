@@ -19,11 +19,7 @@ import (
 )
 
 var (
-	TaskNotFoundError400                     = errors.New("400. Task not found")
-	OperatorNotPartOfTaskQuorum400           = errors.New("400. Operator not part of quorum")
-	TaskResponseDigestNotFoundError500       = errors.New("500. Failed to get task response digest")
-	UnknownErrorWhileVerifyingSignature400   = errors.New("400. Failed to verify signature")
-	CallToGetCheckSignaturesIndicesFailed500 = errors.New("500. Failed to get check signatures indices")
+	TaskResponseDigestNotFoundError500 = errors.New("500. Failed to get task response digest")
 )
 
 func (c *Coordinator) startServer(_ context.Context) error {
@@ -84,7 +80,7 @@ func (c *Coordinator) ProcessSignedTaskResponse(ctx context.Context, signedTaskR
 
 	if err != nil {
 		c.logger.Error("Failed to process new signature", "err", err)
-		return nil, UnknownErrorWhileVerifyingSignature400
+		return nil, err
 	}
 
 	return &coordinatorpb.SignedTaskResponseReply{Success: true}, nil
