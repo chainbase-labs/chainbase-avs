@@ -26,7 +26,7 @@ generate-proof:
 	difficulty=$${difficulty:-22}; \
 	read -p "Enter task index (default: 0): " task_index; \
 	task_index=$${task_index:-0}; \
-	docker-compose -f flink/docker-compose.yml exec jobmanager ./bin/flink run /opt/proof/proof-1.0-SNAPSHOT.jar $$chain $$start_at $$end_at $$difficulty $$task_index
+	docker-compose -f flink/docker-compose.yml exec jobmanager ./bin/flink run -c com.chainbase.manuscript.ProofApplication /opt/flink/lib/runner-1.0-SNAPSHOT.jar $$chain $$start_at $$end_at $$difficulty $$task_index
 
 help:
 	@echo "Available targets:"

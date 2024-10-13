@@ -1,11 +1,9 @@
 version: '3.2'
 services:
   jobmanager:
-    image: repository.chainbase.com/network/flink:v1.18-0.2
+    image: repository.chainbase.com/network/ms_flink:v1.1-test
     container_name: chainbase_jobmanager
     hostname: chainbase_jobmanager
-    ports:
-      - "8081:8081"
     user: "flink"
     command: "./bin/jobmanager.sh start-foreground"
     volumes:
@@ -13,12 +11,11 @@ services:
       - ./statuspoint/checkpoint:/opt/flink/checkpoint
       - ./statuspoint/savepoint:/opt/flink/savepoint
       - ./log:/opt/flink/log
-      - ./proof/target/proof-1.0-SNAPSHOT.jar:/opt/proof/proof-1.0-SNAPSHOT.jar
     networks:
       - avs_network
 
   taskmanager:
-    image: repository.chainbase.com/network/flink:v1.18-0.2
+    image: repository.chainbase.com/network/ms_flink:v1.1-test
     container_name: chainbase_taskmanager
     hostname: chainbase_taskmanager
     user: "flink"
