@@ -63,6 +63,12 @@ func main() {
 			Usage:   "prints operator status as viewed from incredible squaring contracts",
 			Action:  actions.PrintOperatorStatus,
 		},
+		{
+			Name:    "test-manuscript-node-task",
+			Aliases: []string{"t"},
+			Usage:   "send a test task to manuscript node",
+			Action:  actions.TestManuscriptNodeTask,
+		},
 	}
 
 	err := app.Run(os.Args)

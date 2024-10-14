@@ -317,7 +317,7 @@ func (n *ManuscriptNode) Start(ctx context.Context) error {
 			for {
 				ip, jobManagerStatus := n.metrics.UpdateNodeMetrics(n.operatorAddr.String(), AvsName, n.jobManagerHost, n.jobManagerPort)
 				n.logger.Info("update host metrics", "operator address", n.operatorAddr.String(), "ip", ip, "job_manager_status", jobManagerStatus)
-				time.Sleep(1 * time.Minute)
+				time.Sleep(1 * time.Hour)
 			}
 
 		}()
