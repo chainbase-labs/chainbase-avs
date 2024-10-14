@@ -1,12 +1,17 @@
 package node
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/chainbase-labs/chainbase-avs/core"
 )
 
 // TestManuscriptNodeTask run a test task on manuscript node
 func (n *ManuscriptNode) TestManuscriptNodeTask() error {
-	taskDetails := "v1;zkevm;block;merkle;start:3183646;end:3183746;difficulty:10;deadline:1728899172"
+	deadline := time.Now().Add(time.Hour).Unix()
+	taskDetails := fmt.Sprintf("v1;zkevm;block;merkle;start:3183646;end:3183746;difficulty:10;deadline:%d", deadline)
+
 	parsedTaskDetails, err := core.ParseTaskDetails(taskDetails)
 	if err != nil {
 		n.logger.Error("Failed to parse task details", "err", err)
