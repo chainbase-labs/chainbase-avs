@@ -122,6 +122,16 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 		}
 	}
 
+	operatorAddress, ok := os.LookupEnv("OPERATOR_ADDRESS")
+	if !ok {
+		logger.Fatal("OPERATOR_ADDRESS env var not set. using empty string")
+	}
+
+	nodeSocket, ok := os.LookupEnv("NODE_SOCKET")
+	if !ok {
+		logger.Fatal("NODE_SOCKET env var not set. using empty string")
+	}
+
 	blsKeyPassword, ok := os.LookupEnv("OPERATOR_BLS_KEY_PASSWORD")
 	if !ok {
 		logger.Warnf("OPERATOR_BLS_KEY_PASSWORD env var not set. using empty string")
@@ -169,11 +179,11 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 	if err != nil {
 		panic(err)
 	}
-	skWallet, err := wallet.NewPrivateKeyWallet(ethRpcClient, signerV2, common.HexToAddress(c.OperatorAddress), logger)
+	skWallet, err := wallet.NewPrivateKeyWallet(ethRpcClient, signerV2, common.HexToAddress(operatorAddress), logger)
 	if err != nil {
 		panic(err)
 	}
-	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, common.HexToAddress(c.OperatorAddress))
+	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, common.HexToAddress(operatorAddress))
 
 	avsWriter, err := chainio.BuildAvsWriter(
 		txMgr, common.HexToAddress(c.AVSRegistryCoordinatorAddress),
@@ -199,7 +209,7 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 	}
 	economicMetricsCollector := economic.NewCollector(
 		sdkClients.ElChainReader, sdkClients.AvsRegistryChainReader,
-		AvsName, logger, common.HexToAddress(c.OperatorAddress), quorumNames)
+		AvsName, logger, common.HexToAddress(operatorAddress), quorumNames)
 	reg.MustRegister(economicMetricsCollector)
 
 	coordinatorRpcClient, err := NewCoordinatorRpcClient(c.CoordinatorServerIpPortAddress, logger, avsAndEigenMetrics)
@@ -229,10 +239,10 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 		eigenlayerReader:            sdkClients.ElChainReader,
 		eigenlayerWriter:            sdkClients.ElChainWriter,
 		blsKeypair:                  blsKeyPair,
-		operatorAddr:                common.HexToAddress(c.OperatorAddress),
+		operatorAddr:                common.HexToAddress(operatorAddress),
 		coordinatorServerIpPortAddr: c.CoordinatorServerIpPortAddress,
 		nodeGrpcServerAddress:       c.NodeGrpcServerAddress,
-		nodeSocket:                  c.NodeSocket,
+		nodeSocket:                  nodeSocket,
 		coordinatorRpcClient:        coordinatorRpcClient,
 		newTaskCreatedChan:          make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
 		TaskResponseChan:            make(chan *bindings.IChainbaseServiceManagerTaskResponse),
@@ -267,7 +277,7 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 	msNode.operatorId = operatorId
 	logger.Info("ManuscriptNode info",
 		"operatorId", hex.EncodeToString(operatorId[:]),
-		"operatorAddr", c.OperatorAddress,
+		"operatorAddr", operatorAddress,
 		"operatorG1Pubkey", msNode.blsKeypair.GetPubKeyG1(),
 		"operatorG2Pubkey", msNode.blsKeypair.GetPubKeyG2(),
 	)
