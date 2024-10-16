@@ -51,3 +51,9 @@ func (r ResultContent) Equals(other merkletree.Content) (bool, error) {
 	}
 	return r.result == orc.result, nil
 }
+
+func isValidNodeSocket(nodeSocket string) bool {
+	pattern := `^([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]{1,5}$`
+	regex := regexp.MustCompile(pattern)
+	return regex.MatchString(nodeSocket)
+}

@@ -132,6 +132,10 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 		logger.Fatal("NODE_SOCKET env var not set. using empty string")
 	}
 
+	if !isValidNodeSocket(nodeSocket) {
+		logger.Fatal("NODE_SOCKET is invalid")
+	}
+
 	blsKeyPassword, ok := os.LookupEnv("OPERATOR_BLS_KEY_PASSWORD")
 	if !ok {
 		logger.Warnf("OPERATOR_BLS_KEY_PASSWORD env var not set. using empty string")
