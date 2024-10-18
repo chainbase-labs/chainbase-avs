@@ -55,11 +55,3 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: chainbase-registry.ap-southeast-1.cr.aliyuncs.com/network/chainbase-node:${{ steps.get_version.outputs.VERSION }}
-
-      - name: Build and push flink
-        uses: docker/build-push-action@v6
-        with:
-          file: flink.Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: chainbase-registry.ap-southeast-1.cr.aliyuncs.com/network/ms_flink:${{ steps.get_version.outputs.VERSION }}
