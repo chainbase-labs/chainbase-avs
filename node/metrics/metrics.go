@@ -93,7 +93,7 @@ func (m *AvsAndEigenMetrics) IncNumTaskSucceed() {
 }
 
 func (m *AvsAndEigenMetrics) IncNumTaskFailed() {
-	m.numTaskSucceed.Inc()
+	m.numTaskFailed.Inc()
 }
 
 func (m *AvsAndEigenMetrics) SetTaskExecutionTime(executionTime float64) {
