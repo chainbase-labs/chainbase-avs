@@ -1,0 +1,35 @@
+//protoc --go_out=../grpc --go-grpc_out=../grpc coordinator.proto
+
+syntax = "proto3";
+
+package coordinator;
+
+option go_package = "coordinator/";
+
+service CoordinatorService {
+  rpc ProcessSignedTaskResponse(SignedTaskResponseRequest) returns (SignedTaskResponseReply) {}
+}
+
+message SignedTaskResponseRequest {
+  IChainbaseServiceManagerTaskResponse task_response = 1;
+  Signature bls_signature = 2;
+  bytes operator_id = 3; // OperatorId (Bytes32)
+}
+
+message IChainbaseServiceManagerTaskResponse {
+  uint32 reference_task_index = 1;
+  string task_response = 2;
+}
+
+message Signature {
+  G1Point g1_point = 1;
+}
+
+message G1Point {
+  repeated uint64 x = 1; // 4 uint64 values
+  repeated uint64 y = 2; // 4 uint64 values
+}
+
+message SignedTaskResponseReply {
+  bool success = 1;
+}
