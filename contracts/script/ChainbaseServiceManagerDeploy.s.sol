@@ -15,7 +15,7 @@ import "@eigenlayer-middleware/lib/eigenlayer-contracts/src/contracts/permission
 import "../src/ChainbaseServiceManager.sol";
 import {EigenHoleSkyDeployments} from "./EigenDeployments.s.sol";
 
-contract ChainbaseServiceManagerDeployer is Script {
+contract ChainbaseServiceManagerDeploy is Script {
     address public multiSigManager;
     address public aggregator;
     address public generator;
@@ -40,8 +40,8 @@ contract ChainbaseServiceManagerDeployer is Script {
     IChainbaseServiceManager public chainbaseServiceManagerProxy;
     IChainbaseServiceManager public chainbaseServiceManagerImplementation;
 
-    //forge script --chain holesky script/ChainbaseServiceManagerDeployer.s.sol --rpc-url $HOLESKY_RPC_URL --broadcast --verify -vvvv
-    //forge script script/ChainbaseServiceManagerDeployer.s.sol --rpc-url http://localhost:8545 --broadcast -vvvv
+    //forge script --chain holesky script/ChainbaseServiceManagerDeploy.s.sol --rpc-url $HOLESKY_RPC_URL --broadcast --verify -vvvv
+    //forge script script/ChainbaseServiceManagerDeploy.s.sol --rpc-url http://localhost:8545 --broadcast -vvvv
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);

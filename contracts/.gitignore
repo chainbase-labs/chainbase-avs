@@ -8,8 +8,6 @@ out/
 /broadcast/*/40525/
 /broadcast/**/dry-run/
 
-remappings.txt
-
 # Dotenv file
 .env
 

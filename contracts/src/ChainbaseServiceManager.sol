@@ -128,10 +128,6 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
             allTaskResponses[taskResponse.referenceTaskIndex] == bytes32(0),
             "ChainbaseServiceManager: aggregator has already responded to the task"
         );
-        require(
-            uint32(block.number) <= taskCreatedBlock + TASK_RESPONSE_WINDOW_BLOCK,
-            "ChainbaseServiceManager: aggregator has responded to the task too late"
-        );
 
         /* CHECKING SIGNATURES & WHETHER THRESHOLD IS MET OR NOT */
         // calculate message which operators signed

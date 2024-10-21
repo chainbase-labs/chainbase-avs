@@ -2,7 +2,7 @@
   "addresses": {
     "blsApkRegistryImplementation": "0xaf5b82390C1fA6b451c28176e9A60DC1A00529B8",
     "blsApkRegistryProxy": "0xf9e64168901dbEcA17a3dDe80Bd184e12f46853a",
-    "chainbaseServiceManagerImplementation": "0x4b3050EcF4B77f228e4518F3d1a0A41c78D084D3",
+    "chainbaseServiceManagerImplementation": "0xE7a1603b13a48aeA9f7Fc31EB42F4941ABece69F",
     "chainbaseServiceManagerProxy": "0x0fb6b02F8482a06CF1d99558576F111abC377932",
     "indexRegistryImplementation": "0x2faFA82475b1278DB1445a4Af7ac4e790B854883",
     "indexRegistryProxy": "0xB7aCf43E3A614b10d7Ac3E4082f30730DfeC64EE",
