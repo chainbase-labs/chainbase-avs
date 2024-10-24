@@ -28,4 +28,8 @@ abstract contract ChainbaseServiceManagerStorage is IChainbaseServiceManager {
 
     address public aggregator;
     address public generator;
+
+    mapping(address => bool) public operatorWhitelist;
+
+    bool public whitelistEnabled;
 }
