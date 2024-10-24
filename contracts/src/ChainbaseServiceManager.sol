@@ -26,6 +26,14 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
         _;
     }
 
+    /**
+     * @dev Modifier to restrict operator in whitelist
+     */
+    modifier onlyWhitelisted(address operator) {
+        require(!whitelistEnabled || operatorWhitelist[operator], "ChainbaseServiceManager: operator not in whitelist");
+        _;
+    }
+
     //=========================================================================
     //                                CONSTRUCTOR
     //=========================================================================
@@ -78,9 +86,57 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
         generator = _generator;
     }
 
+    /**
+     * @dev Add the operator to the whitelist.
+     * @param operators The address of the operators.
+     */
+    function addOperatorsToWhitelist(address[] calldata operators) external onlyOwner {
+        for (uint256 i = 0; i < operators.length; i++) {
+            operatorWhitelist[operators[i]] = true;
+        }
+    }
+
+    /**
+     * @dev Remove the operator from the whitelist.
+     * @param operators The address of the operators.
+     */
+    function removeOperatorsFromWhitelist(address[] calldata operators) external onlyOwner {
+        for (uint256 i = 0; i < operators.length; i++) {
+            delete operatorWhitelist[operators[i]];
+        }
+    }
+
+    /**
+     * @dev Set the whitelist enabled status.
+     * @param _whitelistEnabled The status to set.
+     */
+    function setWhitelistEnabled(bool _whitelistEnabled) external onlyOwner {
+        whitelistEnabled = _whitelistEnabled;
+    }
+
     //=========================================================================
     //                                EXTERNAL
     //=========================================================================
+    /**
+     * @notice Forwards a call to EigenLayer's AVSDirectory contract to confirm operator registration with the AVS
+     * @param operator The address of the operator to register.
+     * @param operatorSignature The signature, salt, and expiry of the operator's signature.
+     */
+    function registerOperatorToAVS(
+        address operator,
+        ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature
+    ) public override onlyWhitelisted(operator) {
+        super.registerOperatorToAVS(operator, operatorSignature);
+    }
+
+    /**
+     * @notice Forwards a call to EigenLayer's AVSDirectory contract to confirm operator deregistration from the AVS
+     * @param operator The address of the operator to deregister.
+     */
+    function deregisterOperatorFromAVS(address operator) public override onlyWhitelisted(operator) {
+        super.deregisterOperatorFromAVS(operator);
+    }
+
     /**
      * @notice External function to create a new task
      * @param taskDetails Details of the task
