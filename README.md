@@ -29,7 +29,7 @@ The project contracts has been audited by [SlowMist](https://www.slowmist.com/).
 
 The basic architecture of the project is as follows:
 
-<img src="https://raw.githubusercontent.com/chainbase-labs/chainbase-avs/refs/heads/main/doc/image/architecture.png" width="1000" height="600"/>
+<img src="https://raw.githubusercontent.com/chainbase-labs/chainbase-avs/refs/heads/main/doc/image/architecture.png" width="830" height="500"/>
 
 ## Installation Guide
 
