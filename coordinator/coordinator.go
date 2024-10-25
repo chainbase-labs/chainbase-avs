@@ -86,6 +86,7 @@ type Coordinator struct {
 	taskDurationMinutes   int64
 	metricsReg            *prometheus.Registry
 	metrics               metrics.Metrics
+	quorumThreshold       uint8
 }
 
 // NewCoordinator creates a new Coordinator with the provided config.
@@ -163,6 +164,7 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 		taskDurationMinutes:   c.TaskDurationMinutes,
 		metricsReg:            reg,
 		metrics:               coordinatorMetrics,
+		quorumThreshold:       c.QuorumThreshold,
 	}, nil
 }
 
@@ -257,7 +259,7 @@ func (c *Coordinator) createNewTask() (string, error) {
 func (c *Coordinator) sendNewTask(taskDetails string) error {
 	c.logger.Info("Coordinator sending new task", "task details", taskDetails)
 	// Send taskDetails to the task manager contract
-	newTask, taskIndex, err := c.avsWriter.SendNewTask(context.Background(), taskDetails, types.QuorumThresholdNumerator, types.QuorumNumbers)
+	newTask, taskIndex, err := c.avsWriter.SendNewTask(context.Background(), taskDetails, sdktypes.QuorumThresholdPercentage(c.quorumThreshold), types.QuorumNumbers)
 	if err != nil {
 		c.logger.Error("Coordinator failed to send task", "err", err)
 		return err
