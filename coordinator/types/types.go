@@ -5,11 +5,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const QuorumThresholdNumerator = sdktypes.QuorumThresholdPercentage(25)
-const QuorumThresholdDenominator = sdktypes.QuorumThresholdPercentage(100)
-
-const QueryFilterFromBlock = uint64(1)
-
 var QuorumNumbers = sdktypes.QuorumNums{0}
 
 type BlockNumber = uint32

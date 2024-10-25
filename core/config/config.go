@@ -40,6 +40,7 @@ type Config struct {
 	TaskChains                      []string
 	TaskDurationMinutes             int64
 	CoordinatorMetricsIpPortAddress string
+	QuorumThreshold                 uint8
 }
 
 // ConfigRaw These are read from ConfigFileFlag
@@ -57,6 +58,7 @@ type ConfigRaw struct {
 	TaskChains                      []string            `yaml:"task_chains"`
 	TaskDurationMinutes             int64               `yaml:"task_duration_minutes"`
 	CoordinatorMetricsIpPortAddress string              `yaml:"coordinator_metrics_ip_port_address"`
+	QuorumThreshold                 uint8               `yaml:"quorum_threshold"`
 }
 
 // NewConfig parses config file to read from from flags or environment variables
@@ -143,6 +145,7 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 		TaskChains:                      configRaw.TaskChains,
 		TaskDurationMinutes:             configRaw.TaskDurationMinutes,
 		CoordinatorMetricsIpPortAddress: configRaw.CoordinatorMetricsIpPortAddress,
+		QuorumThreshold:                 configRaw.QuorumThreshold,
 	}
 	config.validate()
 	return config, nil
