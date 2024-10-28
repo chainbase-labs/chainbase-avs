@@ -33,7 +33,7 @@ The basic architecture of the project is as follows:
 
 ## Installation Guide
 
-For installation instructions of setting up and running a Chainbase AVS operator node , please refer to the [Installation Guide](link_to_installation_guide).
+For installation instructions of setting up and running a Chainbase AVS operator node , please refer to the [Installation Guide](https://docs.chainbase.com/node/operator).
 
 ## Official Website and Community
 
