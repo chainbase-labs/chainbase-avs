@@ -53,22 +53,18 @@ func (c *ManuscriptRpcClient) CreateNewTask(task *nodepb.NewTaskRequest) {
 	}
 
 	c.logger.Info("Sending new task to manuscript node", "node", c.nodeServerIpPortAddr)
-	for i := 0; i < 3; i++ {
-		//ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		//defer cancel()
 
-		response, err := c.rpcClient.ReceiveNewTask(context.Background(), task)
-		if err != nil {
-			c.logger.Info("Received error from manuscript node", "node", c.nodeServerIpPortAddr, "err", err)
-			continue
-		}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
 
-		if response.Success {
-			c.logger.Info("New task accepted by manuscript node.", "node", c.nodeServerIpPortAddr)
-			return
-		}
-		c.logger.Info("Retrying in 2 seconds")
-		time.Sleep(2 * time.Second)
+	response, err := c.rpcClient.ReceiveNewTask(ctx, task)
+	if err != nil {
+		c.logger.Info("Received error from manuscript node", "node", c.nodeServerIpPortAddr, "err", err)
+		return
 	}
-	c.logger.Info("Could not send new task to manuscript node. Tried 3 times.")
+
+	if response.Success {
+		c.logger.Info("New task accepted by manuscript node.", "node", c.nodeServerIpPortAddr)
+		return
+	}
 }
