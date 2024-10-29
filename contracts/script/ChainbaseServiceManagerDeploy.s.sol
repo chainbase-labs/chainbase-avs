@@ -13,7 +13,7 @@ import "@eigenlayer-middleware/src/OperatorStateRetriever.sol";
 import "@eigenlayer-middleware/lib/eigenlayer-contracts/src/contracts/permissions/PauserRegistry.sol";
 
 import "../src/ChainbaseServiceManager.sol";
-import {EigenHoleSkyDeployments} from "./EigenDeployments.s.sol";
+import {EigenMainnetDeployments} from "./EigenDeployments.s.sol";
 
 contract ChainbaseServiceManagerDeploy is Script {
     address public multiSigManager;
@@ -41,6 +41,7 @@ contract ChainbaseServiceManagerDeploy is Script {
     IChainbaseServiceManager public chainbaseServiceManagerImplementation;
 
     //forge script --chain holesky script/ChainbaseServiceManagerDeploy.s.sol --rpc-url $HOLESKY_RPC_URL --broadcast --verify -vvvv
+    //forge script --chain mainnet script/ChainbaseServiceManagerDeploy.s.sol --rpc-url $MAINNET_RPC_URL --broadcast --verify -vvvv
     //forge script script/ChainbaseServiceManagerDeploy.s.sol --rpc-url http://localhost:8545 --broadcast -vvvv
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -50,19 +51,22 @@ contract ChainbaseServiceManagerDeploy is Script {
         aggregator = vm.envAddress("SERVICE_AGGREGATOR");
         generator = vm.envAddress("SERVICE_GENERATOR");
 
-        address delegationManager = vm.envAddress("DELEGATION_MANAGER");
-        address avsDirectory = vm.envAddress("AVS_DIRECTORY");
+        address delegationManager = EigenMainnetDeployments.DelegationManager;
+        address avsDirectory = EigenMainnetDeployments.AVSDirectory;
 
-        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.cbETHStrategy));
-        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.stETHStrategy));
-        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.rETHStrategy));
-        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.ETHxStrategy));
-        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.ankrETHStrategy));
-        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.osETHStrategy));
-        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.sfrxETHStrategy));
-        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.LsETHStrategy));
-        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.mETHSTrategy));
-        deployedStrategyArray.push(IStrategy(EigenHoleSkyDeployments.beaconETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.cbETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.stETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.rETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.ETHxStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.ankrETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.OETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.osETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.swETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.wBETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.sfrxETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.LsETHStrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.mETHSTrategy));
+        deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.beaconETHStrategy));
 
         _deployChainbaseServiceManagerContracts(IDelegationManager(delegationManager), IAVSDirectory(avsDirectory));
 
@@ -79,9 +83,8 @@ contract ChainbaseServiceManagerDeploy is Script {
 
         // deploy pauser registry
         {
-            address[] memory pausers = new address[](2);
-            pausers[0] = msg.sender;
-            pausers[1] = multiSigManager;
+            address[] memory pausers = new address[](1);
+            pausers[0] = multiSigManager;
             address unpauser = multiSigManager;
             pauserRegistry = new PauserRegistry(pausers, unpauser);
         }
