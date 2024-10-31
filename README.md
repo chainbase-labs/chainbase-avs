@@ -4,9 +4,24 @@ Welcome to the Chainbase AVS! This repository contains the source code and other
 
 ## Deployed Contracts
 
-Here you can find the information about the deployed contracts:
+Here you can find the information about the deployed contracts.
 
-### Current Testnet Deployment
+### Mainnet Deployment
+
+The current mainnet deployment is on Ethereum mainnet. You can view the deployed contract addresses below.
+
+| Name                                                                                                       | Proxy                                                                                 | Implementation                                                                        | Notes                                                                                                                                                |
+|------------------------------------------------------------------------------------------------------------| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `chainbaseServiceManager` | [`0xb73a87E8F7f9129816d40940Ca19DFa396944C71`](https://etherscan.io/address/0xb73a87E8F7f9129816d40940Ca19DFa396944C71) | [`0x24aB905979aaf09d6855C37266E71CDb9EC66413`](https://etherscan.io/address/0x24aB905979aaf09d6855C37266E71CDb9EC66413) | Proxy: [`TUP@4.9.6`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/proxy/transparent/TransparentUpgradeableProxy.sol) |
+| `registryCoordinator` | [`0x28c486660aFF4C3ffC671cb72Ff36FeA214e8dE1`](https://etherscan.io/address/0x28c486660aFF4C3ffC671cb72Ff36FeA214e8dE1) | [`0x5a8aEab2a8310e02d7c491231D7cb6a84ccB8eD4`](https://etherscan.io/address/0x5a8aEab2a8310e02d7c491231D7cb6a84ccB8eD4) | Proxy: [`TUP@4.9.6`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/proxy/transparent/TransparentUpgradeableProxy.sol) |
+| `blsApkRegistry` | [`0xCd249106362A33cEa6Eb7f3372986C4e7514C419`](https://etherscan.io/address/0xCd249106362A33cEa6Eb7f3372986C4e7514C419) | [`0x0E992BdbBB259ec73Cea380378fe6c1C9f2792ac`](https://etherscan.io/address/0x0E992BdbBB259ec73Cea380378fe6c1C9f2792ac) | Proxy: [`TUP@4.9.6`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/proxy/transparent/TransparentUpgradeableProxy.sol) |
+| `stakeRegistry` | [`0xF139A704063F85C91089FACe6eEAa13a78f46D1b`](https://etherscan.io/address/0xF139A704063F85C91089FACe6eEAa13a78f46D1b) | [`0x3Cbf6c7b5ca028f1d9D199a836f82A7E4d2E1aEC`](https://etherscan.io/address/0x3Cbf6c7b5ca028f1d9D199a836f82A7E4d2E1aEC) | Proxy: [`TUP@4.9.6`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/proxy/transparent/TransparentUpgradeableProxy.sol) |
+| `indexRegistry` | [`0x557a3f35515B524Db03cfd063904818AA994511B`](https://etherscan.io/address/0x557a3f35515B524Db03cfd063904818AA994511B) | [`0x9FfBb12EB3D17b0083F988b2b87E7647C2Fd9068`](https://etherscan.io/address/0x9FfBb12EB3D17b0083F988b2b87E7647C2Fd9068) | Proxy: [`TUP@4.9.6`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/proxy/transparent/TransparentUpgradeableProxy.sol) |
+| `proxyAdmin` | -                                                                                     | [`0xf3705f4F0CE8313dAfcC1e3b521e4c287817b353`](https://etherscan.io/address/0xf3705f4F0CE8313dAfcC1e3b521e4c287817b353) |                                                                                                                                                      |
+| `pauserRegistry` | -                                                                                     | [`0xE0CE27d10DF8281a5957abb0f9748b1028dcad62`](https://etherscan.io/address/0xE0CE27d10DF8281a5957abb0f9748b1028dcad62) |                                                                                                                                                      |
+| `operatorStateRetriever` | -                                                                                     | [`0x95376d028Cad10259E30d6565D460E01aB652EB9`](https://etherscan.io/address/0x95376d028Cad10259E30d6565D460E01aB652EB9) |                                                                                                                                                      |
+
+### Testnet Deployment
 
 The current testnet deployment is on Holesky testnet. You can view the deployed contract addresses below.
 
