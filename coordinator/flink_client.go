@@ -120,7 +120,8 @@ func (f *FlinkClient) setupCatalogAndExecutionMode(sessionHandle string) error {
 			");",
 		"USE CATALOG paimon;",
 		"SET execution.runtime-mode = 'batch';",
-		"SET execution.parallelism.default = 2;",
+		"SET execution.parallelism.default = 1;",
+		"SET parallelism.default = 1;",
 	}
 
 	for _, query := range setupQueries {
