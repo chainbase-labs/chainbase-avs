@@ -29,7 +29,7 @@ func TestRunFlinkBatchSQL(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("Failed to create session, status code: %d", resp.StatusCode)
+		handleErrorStatus(resp)
 	}
 
 	// Parse the response to get the session handle
@@ -204,7 +204,7 @@ func fetchResults(t *testing.T, client *http.Client, resultAPIURL string) (map[s
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch results, status code: %d", resp.StatusCode)
+		handleErrorStatus(resp)
 	}
 
 	var resultRespData map[string]interface{}
@@ -216,6 +216,24 @@ func fetchResults(t *testing.T, client *http.Client, resultAPIURL string) (map[s
 	}
 
 	return resultRespData, nil
+}
+
+func handleErrorStatus(resp *http.Response) {
+	var errorMessage string
+	switch resp.StatusCode {
+	case http.StatusBadRequest:
+		errorMessage = "Bad Request: The server could not understand the request due to invalid syntax."
+	case http.StatusNotFound:
+		errorMessage = "Not Found: The requested resource could not be found."
+	case http.StatusInternalServerError:
+		errorMessage = "Internal Server Error```go
+		// handle other HTTP error statuses
+	default:
+		body, _ := io.ReadAll(resp.Body)
+		errorMessage = fmt.Sprintf("Unexpected error (status code: %d): %s", resp.StatusCode, body)
+	}
+
+	t.Fatalf(errorMessage)
 }
 
 func executeSQL(t *testing.T, client *http.Client, sessionHandle, sqlQuery string) (string, error) {
@@ -243,7 +261,7 @@ func executeSQL(t *testing.T, client *http.Client, sessionHandle, sqlQuery strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to execute SQL query, status code: %d", resp.StatusCode)
+		handleErrorStatus(resp)
 	}
 
 	// Parse the response to get the operation handle
