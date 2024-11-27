@@ -2,8 +2,10 @@ package coordinator
 
 import (
 	"context"
+	"database/sql"
 	"encoding/hex"
-	"errors"
+	"fmt"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -17,6 +19,9 @@ import (
 	blsagg "github.com/Layr-Labs/eigensdk-go/services/bls_aggregation"
 	oprsinfoserv "github.com/Layr-Labs/eigensdk-go/services/operatorsinfo"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+	"github.com/ethereum/go-ethereum/common"
+	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	coordinatorpb "github.com/chainbase-labs/chainbase-avs/api/grpc/coordinator"
@@ -74,7 +79,9 @@ type Coordinator struct {
 	// receive new tasks in this chan (typically from listening to onchain event)
 	newTaskCreatedChan chan *bindings.ChainbaseServiceManagerNewTaskCreated
 	// avs registry service
-	avsRegistryService avsregistry.AvsRegistryService
+	avsRegistryService *avsregistry.AvsRegistryServiceChainCaller
+	// operators info service
+	operatorsInfoService *oprsinfoserv.OperatorsInfoServiceInMemory
 	// aggregation related fields
 	blsAggregationService blsagg.BlsAggregationService
 	tasks                 map[types.TaskIndex]bindings.IChainbaseServiceManagerTask
@@ -87,6 +94,9 @@ type Coordinator struct {
 	metricsReg            *prometheus.Registry
 	metrics               metrics.Metrics
 	quorumThreshold       uint8
+	// postgres db
+	db                      *sql.DB
+	registryCoordinatorAddr common.Address
 }
 
 // NewCoordinator creates a new Coordinator with the provided config.
@@ -135,8 +145,8 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 		return taskResponseDigest, nil
 	}
 
-	operatorPubkeysService := oprsinfoserv.NewOperatorsInfoServiceInMemory(context.Background(), chainClients.AvsRegistryChainSubscriber, chainClients.AvsRegistryChainReader, nil, c.Logger)
-	avsRegistryService := avsregistry.NewAvsRegistryServiceChainCaller(avsReader, operatorPubkeysService, c.Logger)
+	operatorsInfoService := oprsinfoserv.NewOperatorsInfoServiceInMemory(context.Background(), chainClients.AvsRegistryChainSubscriber, chainClients.AvsRegistryChainReader, nil, c.Logger)
+	avsRegistryService := avsregistry.NewAvsRegistryServiceChainCaller(avsReader, operatorsInfoService, c.Logger)
 	blsAggregationService := blsagg.NewBlsAggregatorService(avsRegistryService, hashFunction, c.Logger)
 	flinkClient := NewFlinkClient(c.FlinkGatewayHttpUrl, c.OssAccessKeyId, c.OssAccessKeySecret)
 
@@ -148,23 +158,38 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 	eigenMetrics := sdkmetrics.NewEigenMetrics(AvsName, c.CoordinatorMetricsIpPortAddress, reg, c.Logger)
 	coordinatorMetrics := metrics.NewCoordinatorMetrics(AvsName, eigenMetrics, reg)
 
+	db, err := sql.Open("postgres", c.DataSource)
+	if err != nil {
+		log.Fatal("Error connecting to the database: ", err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		log.Fatal("Error pinging the database: ", err)
+	}
+
+	fmt.Println("Successfully connected to the database")
+
 	return &Coordinator{
-		logger:                c.Logger,
-		serverIpPortAddr:      c.CoordinatorServerIpPortAddr,
-		ethClient:             chainClients.EthHttpClient,
-		avsWriter:             avsWriter,
-		avsSubscriber:         avsSubscriber,
-		newTaskCreatedChan:    make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
-		avsRegistryService:    avsRegistryService,
-		blsAggregationService: blsAggregationService,
-		tasks:                 make(map[types.TaskIndex]bindings.IChainbaseServiceManagerTask),
-		taskResponses:         make(map[types.TaskIndex]map[sdktypes.TaskResponseDigest]bindings.IChainbaseServiceManagerTaskResponse),
-		flinkClient:           flinkClient,
-		taskChains:            c.TaskChains,
-		taskDurationMinutes:   c.TaskDurationMinutes,
-		metricsReg:            reg,
-		metrics:               coordinatorMetrics,
-		quorumThreshold:       c.QuorumThreshold,
+		logger:                  c.Logger,
+		serverIpPortAddr:        c.CoordinatorServerIpPortAddr,
+		ethClient:               chainClients.EthHttpClient,
+		avsWriter:               avsWriter,
+		avsSubscriber:           avsSubscriber,
+		newTaskCreatedChan:      make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
+		avsRegistryService:      avsRegistryService,
+		operatorsInfoService:    operatorsInfoService,
+		blsAggregationService:   blsAggregationService,
+		tasks:                   make(map[types.TaskIndex]bindings.IChainbaseServiceManagerTask),
+		taskResponses:           make(map[types.TaskIndex]map[sdktypes.TaskResponseDigest]bindings.IChainbaseServiceManagerTaskResponse),
+		flinkClient:             flinkClient,
+		taskChains:              c.TaskChains,
+		taskDurationMinutes:     c.TaskDurationMinutes,
+		metricsReg:              reg,
+		metrics:                 coordinatorMetrics,
+		quorumThreshold:         c.QuorumThreshold,
+		db:                      db,
+		registryCoordinatorAddr: c.RegistryCoordinatorAddr,
 	}, nil
 }
 
@@ -178,6 +203,9 @@ func (c *Coordinator) Start(ctx context.Context) error {
 		}
 	}()
 
+	// update operators info to database
+	go c.updateOperatorsRoutine(ctx)
+
 	var metricsErrChan <-chan error
 	metricsErrChan = c.metrics.Start(ctx, c.metricsReg)
 
@@ -185,7 +213,6 @@ func (c *Coordinator) Start(ctx context.Context) error {
 	sub := c.avsSubscriber.SubscribeToNewTasks(c.newTaskCreatedChan)
 	// ticker for creating new task
 	ticker := time.NewTicker(time.Duration(c.taskDurationMinutes) * time.Minute)
-	c.logger.Infof("Coordinator set to send new task every 2 hours")
 	defer ticker.Stop()
 
 	taskDetails, err := c.createNewTask()

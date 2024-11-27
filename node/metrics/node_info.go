@@ -24,6 +24,21 @@ func GetOutboundIP() string {
 	return strings.TrimSpace(string(ip))
 }
 
+func GetCPUCore() uint32 {
+	cmd := exec.Command("grep", "-c", "^processor", "/proc/cpuinfo")
+	output, err := cmd.Output()
+	if err != nil {
+		return 0
+	}
+	countStr := strings.TrimSpace(string(output))
+	count, err := strconv.ParseInt(countStr, 10, 64)
+	if err != nil {
+		return 0
+	}
+
+	return uint32(count)
+}
+
 func GetTotalMemory() float64 {
 	cmd := exec.Command("grep", "MemTotal", "/proc/meminfo")
 	output, err := cmd.Output()
