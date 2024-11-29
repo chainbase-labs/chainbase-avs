@@ -10,7 +10,7 @@ create table operator
 (
     id               serial primary key,
     operator_address varchar(42) not null unique,
-    operator_id      varchar(64) not null,
+    operator_id      varchar(64) not null unique,
     socket           varchar(20) not null,
     location         varchar(30),
     cpu_core         integer,
@@ -23,12 +23,14 @@ create table operator
 
 create table task
 (
-    id            serial primary key,
-    task_id       integer      not null unique,
-    task_detail   varchar(128) not null,
-    task_response varchar(66),
-    created_at    timestamp with time zone default CURRENT_TIMESTAMP,
-    updated_at    timestamp with time zone default CURRENT_TIMESTAMP
+    id               serial primary key,
+    task_id          integer      not null unique,
+    task_detail      varchar(128) not null,
+    task_response    varchar(66),
+    create_task_tx   varchar(66),
+    response_task_tx varchar(66),
+    created_at       timestamp with time zone default CURRENT_TIMESTAMP,
+    updated_at       timestamp with time zone default CURRENT_TIMESTAMP
 );
 
 create table operator_task

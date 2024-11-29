@@ -218,10 +218,9 @@ func (c *Coordinator) Start(ctx context.Context) error {
 	taskDetails, err := c.createNewTask()
 	if err != nil {
 		c.logger.Error("Create new task error", "err", err)
-	} else {
-		// ticker doesn't tick immediately, so we send the first task here
-		_ = c.sendNewTask(taskDetails)
 	}
+	// ticker doesn't tick immediately, so we send the first task here
+	//_ = c.sendNewTask(taskDetails)
 
 	for {
 		select {

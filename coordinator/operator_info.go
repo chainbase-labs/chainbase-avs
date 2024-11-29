@@ -9,8 +9,10 @@ import (
 	"strings"
 	"time"
 
+	apkreg "github.com/Layr-Labs/eigensdk-go/contracts/bindings/BLSApkRegistry"
 	regcoord "github.com/Layr-Labs/eigensdk-go/contracts/bindings/RegistryCoordinator"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -52,16 +54,21 @@ func (c *Coordinator) updateOperatorsRoutine(ctx context.Context) {
 			taskResponseSub = c.avsSubscriber.SubscribeToTaskResponses(taskResponseChan)
 		case newTaskCreatedLog := <-newTaskCreatedChan:
 			err := postgres.InsertTask(c.db, &postgres.Task{
-				TaskID:     newTaskCreatedLog.TaskIndex,
-				TaskDetail: newTaskCreatedLog.Task.TaskDetails,
+				TaskID:       newTaskCreatedLog.TaskIndex,
+				TaskDetail:   newTaskCreatedLog.Task.TaskDetails,
+				CreateTaskTx: newTaskCreatedLog.Raw.TxHash.String(),
 			})
 			if err != nil {
 				c.logger.Error("Error in insert task", "err", err)
 			}
 		case taskResponseLog := <-taskResponseChan:
-			err := postgres.UpdateTaskResponse(c.db, taskResponseLog.TaskResponse.ReferenceTaskIndex, taskResponseLog.TaskResponse.TaskResponse)
+			err := postgres.UpdateTaskResponse(c.db, taskResponseLog.TaskResponse.ReferenceTaskIndex, taskResponseLog.TaskResponse.TaskResponse, taskResponseLog.Raw.TxHash.String())
 			if err != nil {
 				c.logger.Error("Error in update task response", "err", err)
+			}
+			err = c.updateOperatorTasks(ctx, taskResponseLog)
+			if err != nil {
+				c.logger.Error("Error in update operator tasks", "err", err)
 			}
 		case <-ctx.Done():
 			c.logger.Error("Update routine stopping...")
@@ -167,6 +174,110 @@ func (c *Coordinator) updateOperatorRegisteredAt(operators []common.Address) err
 	}
 
 	return nil
+}
+
+type ResponseTxInput struct {
+	task                        bindings.IChainbaseServiceManagerTask
+	taskResponse                bindings.IChainbaseServiceManagerTaskResponse
+	nonSignerStakesAndSignature bindings.IBLSSignatureCheckerNonSignerStakesAndSignature
+}
+
+func (c *Coordinator) updateOperatorTasks(ctx context.Context, taskResponseLog *bindings.ChainbaseServiceManagerTaskResponded) error {
+	latestTaskID, err := postgres.QueryOperatorTaskLatestTaskID(c.db)
+	if err != nil {
+		return err
+	}
+
+	// skip if operator task is already processed
+	taskID := taskResponseLog.TaskResponse.ReferenceTaskIndex
+	if taskID <= latestTaskID {
+		return nil
+	}
+
+	tx, _, err := c.ethClient.TransactionByHash(context.Background(), taskResponseLog.Raw.TxHash)
+	if err != nil {
+		return err
+	}
+
+	parsedABI, err := abi.JSON(strings.NewReader(bindings.ChainbaseServiceManagerMetaData.ABI))
+	if err != nil {
+		return err
+	}
+
+	data := tx.Data()
+	if len(data) < 4 {
+		return errors.New("invalid data for unpacking")
+	}
+
+	method, err := parsedABI.MethodById(data[:4])
+	if err != nil {
+		return err
+	}
+
+	var input ResponseTxInput
+	err = parsedABI.UnpackIntoInterface(&input, method.Name, data[4:])
+	if err != nil {
+		return err
+	}
+
+	nonSignerPubkeys := input.nonSignerStakesAndSignature.NonSignerPubkeys
+	nonSignerOperatorIds := make(map[string]bool, len(nonSignerPubkeys))
+	for _, pubkey := range nonSignerPubkeys {
+		operatorId := sdktypes.OperatorIdFromContractG1Pubkey(apkreg.BN254G1Point{
+			X: pubkey.X,
+			Y: pubkey.Y,
+		})
+		nonSignerOperatorIds[hex.EncodeToString(operatorId[:])] = true
+	}
+
+	quorumNumbers := sdktypes.QuorumNums{sdktypes.QuorumNum(0)}
+	operatorsStakesInQuorums, err := c.avsRegistryService.GetOperatorsStakeInQuorumsAtBlock(&bind.CallOpts{Context: ctx}, quorumNumbers, uint32(taskResponseLog.Raw.BlockNumber))
+	if err != nil {
+		return errors.Wrap(err, "Failed to get operator state")
+	}
+	if len(operatorsStakesInQuorums) != len(quorumNumbers) {
+		return errors.Wrap(err, "Number of quorums returned from GetOperatorsStakeInQuorumsAtBlock does not match number of quorums requested")
+	}
+	operatorsStakes := operatorsStakesInQuorums[0]
+
+	signerAddresses := make([]string, 0)
+	nonSignerAddresses := make([]string, 0)
+	for _, operatorStake := range operatorsStakes {
+		operatorId := hex.EncodeToString(operatorStake.OperatorId[:])
+		if nonSignerOperatorIds[operatorId] {
+			nonSignerAddresses = append(nonSignerAddresses, operatorStake.Operator.String())
+		} else {
+			signerAddresses = append(signerAddresses, operatorStake.Operator.String())
+		}
+	}
+
+	if err = c.InsertOperatorTasks(err, signerAddresses, taskID, "completed"); err != nil {
+		return errors.Wrap(err, "Failed to insert completed operator tasks")
+	}
+
+	if err = c.InsertOperatorTasks(err, nonSignerAddresses, taskID, "failed"); err != nil {
+		return errors.Wrap(err, "Failed to insert failed operator tasks")
+	}
+
+	return nil
+}
+
+func (c *Coordinator) InsertOperatorTasks(err error, addresses []string, taskID uint32, status string) error {
+	operatorIDs, err := postgres.QueryOperatorIDs(c.db, addresses)
+	if err != nil {
+		return err
+	}
+
+	signerOperatorTasks := make([]*postgres.OperatorTask, len(operatorIDs))
+	for _, operatorID := range operatorIDs {
+		signerOperatorTasks = append(signerOperatorTasks, &postgres.OperatorTask{
+			OperatorID: operatorID,
+			TaskID:     taskID,
+			Status:     status,
+		})
+	}
+
+	return postgres.BatchInsertOperatorTasks(c.db, signerOperatorTasks)
 }
 
 type IpApiResponse struct {

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type Operator struct {
@@ -18,14 +20,16 @@ type Operator struct {
 }
 
 type Task struct {
-	TaskID       uint32
-	TaskDetail   string
-	TaskResponse string
+	TaskID         uint32
+	TaskDetail     string
+	TaskResponse   string
+	CreateTaskTx   string
+	ResponseTaskTx string
 }
 
 type OperatorTask struct {
-	OperatorID int
-	TaskID     int
+	OperatorID uint32
+	TaskID     uint32
 	Status     string
 }
 
@@ -99,22 +103,22 @@ func QueryOperatorAddressesNoRegisteredAt(db *sql.DB) ([]string, error) {
 
 func InsertTask(db *sql.DB, task *Task) error {
 	_, err := db.Exec(`
-        INSERT INTO task (task_id, task_detail, task_response) 
+        INSERT INTO task (task_id, task_detail, create_task_tx) 
         VALUES ($1, $2, $3)
         ON CONFLICT (task_id) DO NOTHING;`,
 		task.TaskID,
 		task.TaskDetail,
-		task.TaskResponse,
+		task.CreateTaskTx,
 	)
 	return err
 }
 
-func UpdateTaskResponse(db *sql.DB, taskID uint32, taskResponse string) error {
-	_, err := db.Exec(`UPDATE task SET task_response = $1 WHERE task_id = $2 AND task_response is NULL`, taskResponse, taskID)
+func UpdateTaskResponse(db *sql.DB, taskID uint32, taskResponse, responseTaskTx string) error {
+	_, err := db.Exec(`UPDATE task SET task_response = $1, response_task_tx = $2 WHERE task_id = $3 AND task_response is NULL`, taskResponse, responseTaskTx, taskID)
 	return err
 }
 
-func BatchInsertOperatorTasks(db *sql.DB, operatorTasks []OperatorTask) error {
+func BatchInsertOperatorTasks(db *sql.DB, operatorTasks []*OperatorTask) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -137,4 +141,22 @@ func BatchInsertOperatorTasks(db *sql.DB, operatorTasks []OperatorTask) error {
 	}
 
 	return tx.Commit()
+}
+
+func QueryOperatorTaskLatestTaskID(db *sql.DB) (uint32, error) {
+	var maxTaskID uint32
+	err := db.QueryRow("SELECT MAX(task_id) FROM operator_task").Scan(&maxTaskID)
+	if err != nil {
+		return 0, err
+	}
+	return maxTaskID, nil
+}
+
+func QueryOperatorIDs(db *sql.DB, operatorAddresses []string) ([]uint32, error) {
+	var operatorIDs []uint32
+	err := db.QueryRow("SELECT operator_id FROM operator WHERE operator_address = ANY($1)", pq.Array(operatorAddresses)).Scan(&operatorIDs)
+	if err != nil {
+		return nil, err
+	}
+	return operatorIDs, nil
 }
