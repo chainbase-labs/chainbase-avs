@@ -10,13 +10,13 @@ import (
 	"time"
 
 	apkreg "github.com/Layr-Labs/eigensdk-go/contracts/bindings/BLSApkRegistry"
-	regcoord "github.com/Layr-Labs/eigensdk-go/contracts/bindings/RegistryCoordinator"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 
+	nodepb "github.com/chainbase-labs/chainbase-avs/api/grpc/node"
 	"github.com/chainbase-labs/chainbase-avs/contracts/bindings"
 	"github.com/chainbase-labs/chainbase-avs/coordinator/postgres"
 )
@@ -34,14 +34,20 @@ func (c *Coordinator) updateOperatorsRoutine(ctx context.Context) {
 	taskResponseChan := make(chan *bindings.ChainbaseServiceManagerTaskResponded)
 	taskResponseSub := c.avsSubscriber.SubscribeToTaskResponses(taskResponseChan)
 
-	if err := c.updateOperatorsInfo(ctx); err != nil {
-		c.logger.Error("Error in update operators info", "err", err)
+	// update exist operator info
+	//if err := c.updateOperators(ctx); err != nil {
+	//	c.logger.Error("Error in update operators", "err", err)
+	//}
+
+	// update exist tasks
+	if err := c.updateTasks(ctx); err != nil {
+		c.logger.Error("Error in update tasks", "err", err)
 	}
 
 	for {
 		select {
 		case <-ticker.C:
-			if err := c.updateOperatorsInfo(ctx); err != nil {
+			if err := c.updateOperators(ctx); err != nil {
 				c.logger.Error("Error in update operators info", "err", err)
 			}
 		case err := <-newTaskCreatedSub.Err():
@@ -62,11 +68,19 @@ func (c *Coordinator) updateOperatorsRoutine(ctx context.Context) {
 				c.logger.Error("Error in insert task", "err", err)
 			}
 		case taskResponseLog := <-taskResponseChan:
-			err := postgres.UpdateTaskResponse(c.db, taskResponseLog.TaskResponse.ReferenceTaskIndex, taskResponseLog.TaskResponse.TaskResponse, taskResponseLog.Raw.TxHash.String())
+			err := postgres.UpdateTaskResponse(c.db,
+				taskResponseLog.TaskResponse.ReferenceTaskIndex,
+				taskResponseLog.TaskResponse.TaskResponse,
+				taskResponseLog.Raw.TxHash.String(),
+			)
 			if err != nil {
 				c.logger.Error("Error in update task response", "err", err)
 			}
-			err = c.updateOperatorTasks(ctx, taskResponseLog)
+			err = c.updateOperatorTasks(ctx,
+				taskResponseLog.TaskResponse.ReferenceTaskIndex,
+				taskResponseLog.Raw.TxHash,
+				uint32(taskResponseLog.Raw.BlockNumber),
+			)
 			if err != nil {
 				c.logger.Error("Error in update operator tasks", "err", err)
 			}
@@ -77,7 +91,7 @@ func (c *Coordinator) updateOperatorsRoutine(ctx context.Context) {
 	}
 }
 
-func (c *Coordinator) updateOperatorsInfo(ctx context.Context) error {
+func (c *Coordinator) updateOperators(ctx context.Context) error {
 	quorumNumbers := sdktypes.QuorumNums{sdktypes.QuorumNum(0)}
 	// Get operator state for each quorum by querying OperatorStateRetriever
 	operatorsStakesInQuorums, err := c.avsRegistryService.GetOperatorsStakeInQuorumsAtCurrentBlock(&bind.CallOpts{Context: ctx}, quorumNumbers)
@@ -96,24 +110,22 @@ func (c *Coordinator) updateOperatorsInfo(ctx context.Context) error {
 			continue
 		}
 
-		nodeRpcClient, err := NewManuscriptRpcClient(operatorInfo.Socket.String(), c.logger, c.metrics)
+		socket := operatorInfo.Socket.String()
+		nodeRpcClient, err := NewManuscriptRpcClient(socket, c.logger, c.metrics)
 		if err != nil {
 			c.logger.Error("Cannot create ManuscriptRpcClient. Is manuscript node running?", "err", err)
 			continue
 		}
 
+		operatorStatus := "active"
 		operatorAddress := operatorStake.Operator.String()
 		operatorHWInfo, err := nodeRpcClient.GetOperatorInfo()
 		if err != nil {
 			c.logger.Error("Failed to get operator hardware info", "operatorAddress", operatorAddress, "err", err)
-			err := postgres.UpdateOperatorStatus(c.db, operatorAddress)
-			if err != nil {
-				c.logger.Error("Failed to update operator status", "operatorAddress", operatorAddress, "err", err)
-			}
-			continue
+			operatorHWInfo = &nodepb.GetOperatorInfoResponse{CpuCore: 0, Memory: 0}
+			operatorStatus = "inactive"
 		}
 
-		socket := operatorInfo.Socket.String()
 		location, err := getIpLocation(socket)
 		if err != nil {
 			c.logger.Error("Failed to get operator location", "socket", socket, "err", err)
@@ -127,7 +139,7 @@ func (c *Coordinator) updateOperatorsInfo(ctx context.Context) error {
 			Location:        location,
 			CPUCore:         operatorHWInfo.CpuCore,
 			Memory:          operatorHWInfo.Memory,
-			Status:          "active",
+			Status:          operatorStatus,
 		})
 		if err != nil {
 			c.logger.Error("Failed to upsert operator", "operatorAddress", operatorAddress, "err", err)
@@ -140,36 +152,91 @@ func (c *Coordinator) updateOperatorsInfo(ctx context.Context) error {
 		c.logger.Error("Failed to query operators no registered at", "err", err)
 	}
 
-	operators := make([]common.Address, len(addresses))
+	operators := make([]common.Address, 0)
 	for _, address := range addresses {
 		operators = append(operators, common.HexToAddress(address))
 	}
-	return c.updateOperatorRegisteredAt(operators)
+	return c.updateOperatorRegisteredAt(ctx, operators)
 }
 
-func (c *Coordinator) updateOperatorRegisteredAt(operators []common.Address) error {
-	contractRegistryCoordinator, err := regcoord.NewContractRegistryCoordinator(c.registryCoordinatorAddr, c.ethClient)
-	if err != nil {
-		return err
-	}
-
-	operatorRegisteredIterator, err := contractRegistryCoordinator.FilterOperatorRegistered(&bind.FilterOpts{Context: context.Background()}, operators, nil)
-	if err != nil {
-		return err
-	}
-
-	for operatorRegisteredIterator.Next() {
-		operator := operatorRegisteredIterator.Event.Operator.String()
-		blockhash := operatorRegisteredIterator.Event.Raw.BlockHash
-		block, err := c.ethClient.BlockByHash(context.Background(), blockhash)
-		if err != nil {
-			continue
+func (c *Coordinator) updateOperatorRegisteredAt(ctx context.Context, operators []common.Address) error {
+	batchSize := 500
+	for len(operators) > 0 {
+		end := len(operators)
+		if len(operators) > batchSize {
+			end = batchSize
 		}
 
-		timestamp := time.Unix(int64(block.Time()), 0)
-		err = postgres.UpdateOperatorRegisteredAt(c.db, operator, timestamp)
+		operatorRegisteredIterator, err := c.registryCoordinator.FilterOperatorRegistered(&bind.FilterOpts{Context: ctx}, operators, nil)
 		if err != nil {
-			continue
+			return err
+		}
+
+		for operatorRegisteredIterator.Next() {
+			operator := operatorRegisteredIterator.Event.Operator.String()
+			blockhash := operatorRegisteredIterator.Event.Raw.BlockHash
+			block, err := c.ethClient.BlockByHash(ctx, blockhash)
+			if err != nil {
+				continue
+			}
+
+			timestamp := time.Unix(int64(block.Time()), 0)
+			err = postgres.UpdateOperatorRegisteredAt(c.db, operator, timestamp)
+			if err != nil {
+				continue
+			}
+		}
+
+		operators = operators[end:]
+	}
+
+	return nil
+}
+
+func (c *Coordinator) updateTasks(ctx context.Context) error {
+	taskCreatedIterator, err := c.avsReader.AvsServiceBindings.ServiceManager.FilterNewTaskCreated(&bind.FilterOpts{Context: ctx}, nil)
+	if err != nil {
+		c.logger.Error("Error in filter new task", "err", err)
+		return err
+	}
+
+	for taskCreatedIterator.Next() {
+		err := postgres.InsertTask(c.db, &postgres.Task{
+			TaskID:       taskCreatedIterator.Event.TaskIndex,
+			TaskDetail:   taskCreatedIterator.Event.Task.TaskDetails,
+			CreateTaskTx: taskCreatedIterator.Event.Raw.TxHash.String(),
+		})
+		if err != nil {
+			c.logger.Error("Error in insert task", "err", err)
+			return err
+		}
+	}
+
+	taskResponseIterator, err := c.avsReader.AvsServiceBindings.ServiceManager.FilterTaskResponded(&bind.FilterOpts{Context: ctx})
+	if err != nil {
+		c.logger.Error("Error in filter task response", "err", err)
+		return err
+	}
+
+	for taskResponseIterator.Next() {
+		err := postgres.UpdateTaskResponse(c.db,
+			taskResponseIterator.Event.TaskResponse.ReferenceTaskIndex,
+			taskResponseIterator.Event.TaskResponse.TaskResponse,
+			taskResponseIterator.Event.Raw.TxHash.String(),
+		)
+		if err != nil {
+			c.logger.Error("Error in update task response", "err", err)
+			return err
+		}
+
+		err = c.updateOperatorTasks(ctx,
+			taskResponseIterator.Event.TaskResponse.ReferenceTaskIndex,
+			taskResponseIterator.Event.Raw.TxHash,
+			uint32(taskResponseIterator.Event.Raw.BlockNumber),
+		)
+		if err != nil {
+			c.logger.Error("Error in update operator tasks", "err", err)
+			return err
 		}
 	}
 
@@ -177,24 +244,23 @@ func (c *Coordinator) updateOperatorRegisteredAt(operators []common.Address) err
 }
 
 type ResponseTxInput struct {
-	task                        bindings.IChainbaseServiceManagerTask
-	taskResponse                bindings.IChainbaseServiceManagerTaskResponse
+	task bindings.IChainbaseServiceManagerTask
+	bindings.IChainbaseServiceManagerTaskResponse
 	nonSignerStakesAndSignature bindings.IBLSSignatureCheckerNonSignerStakesAndSignature
 }
 
-func (c *Coordinator) updateOperatorTasks(ctx context.Context, taskResponseLog *bindings.ChainbaseServiceManagerTaskResponded) error {
-	latestTaskID, err := postgres.QueryOperatorTaskLatestTaskID(c.db)
+func (c *Coordinator) updateOperatorTasks(ctx context.Context, taskID uint32, txHash common.Hash, blockNum uint32) error {
+	operatorTaskCount, err := postgres.CountOperatorTasks(c.db, taskID)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to count operator tasks")
 	}
 
 	// skip if operator task is already processed
-	taskID := taskResponseLog.TaskResponse.ReferenceTaskIndex
-	if taskID <= latestTaskID {
+	if operatorTaskCount != 0 {
 		return nil
 	}
 
-	tx, _, err := c.ethClient.TransactionByHash(context.Background(), taskResponseLog.Raw.TxHash)
+	tx, _, err := c.ethClient.TransactionByHash(ctx, txHash)
 	if err != nil {
 		return err
 	}
@@ -231,7 +297,7 @@ func (c *Coordinator) updateOperatorTasks(ctx context.Context, taskResponseLog *
 	}
 
 	quorumNumbers := sdktypes.QuorumNums{sdktypes.QuorumNum(0)}
-	operatorsStakesInQuorums, err := c.avsRegistryService.GetOperatorsStakeInQuorumsAtBlock(&bind.CallOpts{Context: ctx}, quorumNumbers, uint32(taskResponseLog.Raw.BlockNumber))
+	operatorsStakesInQuorums, err := c.avsRegistryService.GetOperatorsStakeInQuorumsAtBlock(&bind.CallOpts{Context: ctx}, quorumNumbers, blockNum)
 	if err != nil {
 		return errors.Wrap(err, "Failed to get operator state")
 	}
@@ -252,23 +318,31 @@ func (c *Coordinator) updateOperatorTasks(ctx context.Context, taskResponseLog *
 	}
 
 	if err = c.InsertOperatorTasks(err, signerAddresses, taskID, "completed"); err != nil {
-		return errors.Wrap(err, "Failed to insert completed operator tasks")
+		c.logger.Error("Failed to insert completed operator tasks", "err", err)
 	}
 
 	if err = c.InsertOperatorTasks(err, nonSignerAddresses, taskID, "failed"); err != nil {
-		return errors.Wrap(err, "Failed to insert failed operator tasks")
+		c.logger.Error("Failed to insert failed operator tasks", "err", err)
 	}
 
 	return nil
 }
 
 func (c *Coordinator) InsertOperatorTasks(err error, addresses []string, taskID uint32, status string) error {
+	if len(addresses) == 0 {
+		return nil
+	}
+
 	operatorIDs, err := postgres.QueryOperatorIDs(c.db, addresses)
 	if err != nil {
 		return err
 	}
 
-	signerOperatorTasks := make([]*postgres.OperatorTask, len(operatorIDs))
+	if len(operatorIDs) == 0 {
+		return nil
+	}
+
+	signerOperatorTasks := make([]*postgres.OperatorTask, 0)
 	for _, operatorID := range operatorIDs {
 		signerOperatorTasks = append(signerOperatorTasks, &postgres.OperatorTask{
 			OperatorID: operatorID,
@@ -314,6 +388,8 @@ func getIpLocation(socket string) (string, error) {
 	}
 
 	ipLocations[ip] = result.Country
+
+	time.Sleep(time.Second)
 
 	return result.Country, nil
 }

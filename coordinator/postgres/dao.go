@@ -72,11 +72,6 @@ func UpsertOperator(db *sql.DB, operator *Operator) (int, error) {
 	return id, nil
 }
 
-func UpdateOperatorStatus(db *sql.DB, operatorAddress string) error {
-	_, err := db.Exec(`UPDATE operator SET status = $1 WHERE operator_address = $2`, "inactive", operatorAddress)
-	return err
-}
-
 func UpdateOperatorRegisteredAt(db *sql.DB, operatorAddress string, timestamp time.Time) error {
 	registeredAt := sql.NullTime{Time: timestamp, Valid: true}
 	_, err := db.Exec(`UPDATE operator SET registered_at = $1 WHERE operator_address = $2`, registeredAt, operatorAddress)
@@ -143,20 +138,34 @@ func BatchInsertOperatorTasks(db *sql.DB, operatorTasks []*OperatorTask) error {
 	return tx.Commit()
 }
 
-func QueryOperatorTaskLatestTaskID(db *sql.DB) (uint32, error) {
-	var maxTaskID uint32
-	err := db.QueryRow("SELECT MAX(task_id) FROM operator_task").Scan(&maxTaskID)
-	if err != nil {
-		return 0, err
-	}
-	return maxTaskID, nil
+func CountOperatorTasks(db *sql.DB, taskID uint32) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM operator_task WHERE task_id = $1`
+
+	err := db.QueryRow(query, taskID).Scan(&count)
+	return count, err
 }
 
 func QueryOperatorIDs(db *sql.DB, operatorAddresses []string) ([]uint32, error) {
-	var operatorIDs []uint32
-	err := db.QueryRow("SELECT operator_id FROM operator WHERE operator_address = ANY($1)", pq.Array(operatorAddresses)).Scan(&operatorIDs)
+	rows, err := db.Query("SELECT id FROM operator WHERE operator_address = ANY($1)", pq.Array(operatorAddresses))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query operator ids failed: %w", err)
 	}
+	defer rows.Close()
+
+	var operatorIDs []uint32
+
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan operator id failed: %w", err)
+		}
+		operatorIDs = append(operatorIDs, uint32(id))
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate rows failed: %w", err)
+	}
+
 	return operatorIDs, nil
 }

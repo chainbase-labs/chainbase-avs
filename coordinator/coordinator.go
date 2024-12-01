@@ -13,13 +13,13 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
+	regcoord "github.com/Layr-Labs/eigensdk-go/contracts/bindings/RegistryCoordinator"
 	"github.com/Layr-Labs/eigensdk-go/logging"
 	sdkmetrics "github.com/Layr-Labs/eigensdk-go/metrics"
 	"github.com/Layr-Labs/eigensdk-go/services/avsregistry"
 	blsagg "github.com/Layr-Labs/eigensdk-go/services/bls_aggregation"
 	oprsinfoserv "github.com/Layr-Labs/eigensdk-go/services/operatorsinfo"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
-	"github.com/ethereum/go-ethereum/common"
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -74,6 +74,7 @@ type Coordinator struct {
 	logger           logging.Logger
 	serverIpPortAddr string
 	ethClient        eth.Client
+	avsReader        *chainio.AvsReader
 	avsWriter        chainio.IAvsWriter
 	avsSubscriber    chainio.IAvsSubscriber
 	// receive new tasks in this chan (typically from listening to onchain event)
@@ -95,8 +96,8 @@ type Coordinator struct {
 	metrics               metrics.Metrics
 	quorumThreshold       uint8
 	// postgres db
-	db                      *sql.DB
-	registryCoordinatorAddr common.Address
+	db                  *sql.DB
+	registryCoordinator *regcoord.ContractRegistryCoordinator
 }
 
 // NewCoordinator creates a new Coordinator with the provided config.
@@ -132,6 +133,11 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 	chainClients, err := clients.BuildAll(chainConfig, c.EcdsaPrivateKey, c.Logger)
 	if err != nil {
 		c.Logger.Error("Cannot create sdk clients", "err", err)
+		return nil, err
+	}
+
+	registryCoordinator, err := regcoord.NewContractRegistryCoordinator(c.RegistryCoordinatorAddr, chainClients.EthWsClient)
+	if err != nil {
 		return nil, err
 	}
 
@@ -171,25 +177,26 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 	fmt.Println("Successfully connected to the database")
 
 	return &Coordinator{
-		logger:                  c.Logger,
-		serverIpPortAddr:        c.CoordinatorServerIpPortAddr,
-		ethClient:               chainClients.EthHttpClient,
-		avsWriter:               avsWriter,
-		avsSubscriber:           avsSubscriber,
-		newTaskCreatedChan:      make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
-		avsRegistryService:      avsRegistryService,
-		operatorsInfoService:    operatorsInfoService,
-		blsAggregationService:   blsAggregationService,
-		tasks:                   make(map[types.TaskIndex]bindings.IChainbaseServiceManagerTask),
-		taskResponses:           make(map[types.TaskIndex]map[sdktypes.TaskResponseDigest]bindings.IChainbaseServiceManagerTaskResponse),
-		flinkClient:             flinkClient,
-		taskChains:              c.TaskChains,
-		taskDurationMinutes:     c.TaskDurationMinutes,
-		metricsReg:              reg,
-		metrics:                 coordinatorMetrics,
-		quorumThreshold:         c.QuorumThreshold,
-		db:                      db,
-		registryCoordinatorAddr: c.RegistryCoordinatorAddr,
+		logger:                c.Logger,
+		serverIpPortAddr:      c.CoordinatorServerIpPortAddr,
+		ethClient:             chainClients.EthHttpClient,
+		avsReader:             avsReader,
+		avsWriter:             avsWriter,
+		avsSubscriber:         avsSubscriber,
+		newTaskCreatedChan:    make(chan *bindings.ChainbaseServiceManagerNewTaskCreated),
+		avsRegistryService:    avsRegistryService,
+		operatorsInfoService:  operatorsInfoService,
+		blsAggregationService: blsAggregationService,
+		tasks:                 make(map[types.TaskIndex]bindings.IChainbaseServiceManagerTask),
+		taskResponses:         make(map[types.TaskIndex]map[sdktypes.TaskResponseDigest]bindings.IChainbaseServiceManagerTaskResponse),
+		flinkClient:           flinkClient,
+		taskChains:            c.TaskChains,
+		taskDurationMinutes:   c.TaskDurationMinutes,
+		metricsReg:            reg,
+		metrics:               coordinatorMetrics,
+		quorumThreshold:       c.QuorumThreshold,
+		db:                    db,
+		registryCoordinator:   registryCoordinator,
 	}, nil
 }
 
