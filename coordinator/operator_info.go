@@ -34,10 +34,10 @@ func (c *Coordinator) updateOperatorsRoutine(ctx context.Context) {
 	taskResponseChan := make(chan *bindings.ChainbaseServiceManagerTaskResponded)
 	taskResponseSub := c.avsSubscriber.SubscribeToTaskResponses(taskResponseChan)
 
-	// update exist operator info
-	//if err := c.updateOperators(ctx); err != nil {
-	//	c.logger.Error("Error in update operators", "err", err)
-	//}
+	//update exist operator info
+	if err := c.updateOperators(ctx); err != nil {
+		c.logger.Error("Error in update operators", "err", err)
+	}
 
 	// update exist tasks
 	if err := c.updateTasks(ctx); err != nil {
@@ -244,9 +244,9 @@ func (c *Coordinator) updateTasks(ctx context.Context) error {
 }
 
 type ResponseTxInput struct {
-	task bindings.IChainbaseServiceManagerTask
-	bindings.IChainbaseServiceManagerTaskResponse
-	nonSignerStakesAndSignature bindings.IBLSSignatureCheckerNonSignerStakesAndSignature
+	Task                        bindings.IChainbaseServiceManagerTask
+	TaskResponse                bindings.IChainbaseServiceManagerTaskResponse
+	NonSignerStakesAndSignature bindings.IBLSSignatureCheckerNonSignerStakesAndSignature
 }
 
 func (c *Coordinator) updateOperatorTasks(ctx context.Context, taskID uint32, txHash common.Hash, blockNum uint32) error {
@@ -281,12 +281,12 @@ func (c *Coordinator) updateOperatorTasks(ctx context.Context, taskID uint32, tx
 	}
 
 	var input ResponseTxInput
-	err = parsedABI.UnpackIntoInterface(&input, method.Name, data[4:])
+	err = UnpackIntoInterface(parsedABI, &input, method.Name, data[4:])
 	if err != nil {
 		return err
 	}
 
-	nonSignerPubkeys := input.nonSignerStakesAndSignature.NonSignerPubkeys
+	nonSignerPubkeys := input.NonSignerStakesAndSignature.NonSignerPubkeys
 	nonSignerOperatorIds := make(map[string]bool, len(nonSignerPubkeys))
 	for _, pubkey := range nonSignerPubkeys {
 		operatorId := sdktypes.OperatorIdFromContractG1Pubkey(apkreg.BN254G1Point{
@@ -392,4 +392,22 @@ func getIpLocation(socket string) (string, error) {
 	time.Sleep(time.Second)
 
 	return result.Country, nil
+}
+
+func UnpackIntoInterface(parsedABI abi.ABI, v interface{}, name string, data []byte) error {
+	var args abi.Arguments
+	if method, ok := parsedABI.Methods[name]; ok {
+		if len(data)%32 != 0 {
+			return errors.New("abi: improperly formatted output")
+		}
+		args = method.Inputs
+	}
+	if args == nil {
+		return errors.New("abi: could not locate named method")
+	}
+	unpacked, err := args.Unpack(data)
+	if err != nil {
+		return err
+	}
+	return args.Copy(v, unpacked)
 }
