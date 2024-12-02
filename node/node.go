@@ -71,7 +71,7 @@ type ManuscriptNode struct {
 	coordinatorServerIpPortAddr string
 	// node grpc server address
 	nodeGrpcServerAddress string
-	// nodeServerIpPortAddr is the IP address and port of the Node gRPC server.
+	// nodeSocket is the IP address and port of the Node gRPC server.
 	// This public address is submitted to the contract during the RegisterOperatorWithAvs and can be requested by the coordinator.
 	nodeSocket string
 	// rpc client to send signed task responses to coordinator
