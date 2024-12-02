@@ -16,7 +16,6 @@ type Operator struct {
 	CPUCore         uint32
 	Memory          uint32
 	Status          string
-	RegisteredAt    sql.NullTime
 }
 
 type Task struct {
@@ -43,9 +42,8 @@ func UpsertOperator(db *sql.DB, operator *Operator) (int, error) {
             location,
             cpu_core,
             memory,
-            status,
-            registered_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (operator_address) DO UPDATE SET
             operator_id = EXCLUDED.operator_id,
             socket = EXCLUDED.socket,
@@ -53,7 +51,6 @@ func UpsertOperator(db *sql.DB, operator *Operator) (int, error) {
             cpu_core = EXCLUDED.cpu_core,
             memory = EXCLUDED.memory,
             status = EXCLUDED.status,
-            registered_at = EXCLUDED.registered_at,
             updated_at = CURRENT_TIMESTAMP
         RETURNING id`,
 		operator.OperatorAddress,
@@ -63,7 +60,6 @@ func UpsertOperator(db *sql.DB, operator *Operator) (int, error) {
 		operator.CPUCore,
 		operator.Memory,
 		operator.Status,
-		operator.RegisteredAt,
 	).Scan(&id)
 
 	if err != nil {

@@ -167,7 +167,7 @@ func (c *Coordinator) updateOperatorRegisteredAt(ctx context.Context, operators 
 			end = batchSize
 		}
 
-		operatorRegisteredIterator, err := c.registryCoordinator.FilterOperatorRegistered(&bind.FilterOpts{Context: ctx}, operators, nil)
+		operatorRegisteredIterator, err := c.registryCoordinator.FilterOperatorRegistered(&bind.FilterOpts{Context: ctx}, operators[:end], nil)
 		if err != nil {
 			return err
 		}

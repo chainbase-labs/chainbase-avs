@@ -6,7 +6,7 @@ create type operator_status as enum ('active', 'inactive');
 
 create type task_status as enum ('completed', 'failed');
 
-create table operator
+CREATE TABLE IF NOT EXISTS operator
 (
     id               serial primary key,
     operator_address varchar(42) not null unique,
@@ -21,7 +21,7 @@ create table operator
     updated_at       timestamp with time zone default CURRENT_TIMESTAMP
 );
 
-create table task
+CREATE TABLE IF NOT EXISTS task
 (
     id               serial primary key,
     task_id          integer      not null unique,
@@ -33,7 +33,7 @@ create table task
     updated_at       timestamp with time zone default CURRENT_TIMESTAMP
 );
 
-create table operator_task
+CREATE TABLE IF NOT EXISTS operator_task
 (
     id          serial primary key,
     operator_id integer not null references operator,
