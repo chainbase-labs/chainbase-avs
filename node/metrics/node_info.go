@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os/exec"
-	"strconv"
+	"runtime"
 	"strings"
+
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 func GetOutboundIP() string {
@@ -24,19 +25,16 @@ func GetOutboundIP() string {
 	return strings.TrimSpace(string(ip))
 }
 
+func GetCPUCore() uint32 {
+	return uint32(runtime.NumCPU())
+}
+
 func GetTotalMemory() float64 {
-	cmd := exec.Command("grep", "MemTotal", "/proc/meminfo")
-	output, err := cmd.Output()
+	v, err := mem.VirtualMemory()
 	if err != nil {
 		return 0
 	}
-	memStr := strings.TrimSpace(strings.Split(string(output), ":")[1])
-	memKB, err := strconv.ParseFloat(strings.Split(memStr, " ")[0], 64)
-	if err != nil {
-		return 0
-	}
-	// convert KB to MB
-	return memKB * 1024
+	return float64(v.Total) / (1024 * 1024)
 }
 
 func GetJobManagerStatus(jobManagerHost, jobManagerPort string) float64 {

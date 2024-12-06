@@ -11,6 +11,7 @@ import (
 
 	nodepb "github.com/chainbase-labs/chainbase-avs/api/grpc/node"
 	"github.com/chainbase-labs/chainbase-avs/contracts/bindings"
+	"github.com/chainbase-labs/chainbase-avs/node/metrics"
 )
 
 func (n *ManuscriptNode) startServer(_ context.Context) error {
@@ -72,5 +73,13 @@ func (n *ManuscriptNode) ReceiveNewTask(_ context.Context, req *nodepb.NewTaskRe
 
 	return &nodepb.NewTaskResponse{
 		Success: true,
+	}, nil
+}
+
+func (n *ManuscriptNode) GetOperatorInfo(_ context.Context, _ *nodepb.GetOperatorInfoRequest) (*nodepb.GetOperatorInfoResponse, error) {
+	memory := metrics.GetTotalMemory()
+	return &nodepb.GetOperatorInfoResponse{
+		CpuCore: metrics.GetCPUCore(),
+		Memory:  uint32(memory),
 	}, nil
 }

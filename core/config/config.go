@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"log"
 	"os"
 
@@ -41,6 +42,7 @@ type Config struct {
 	TaskDurationMinutes             int64
 	CoordinatorMetricsIpPortAddress string
 	QuorumThreshold                 uint8
+	DataSource                      string
 }
 
 // ConfigRaw These are read from ConfigFileFlag
@@ -59,6 +61,11 @@ type ConfigRaw struct {
 	TaskDurationMinutes             int64               `yaml:"task_duration_minutes"`
 	CoordinatorMetricsIpPortAddress string              `yaml:"coordinator_metrics_ip_port_address"`
 	QuorumThreshold                 uint8               `yaml:"quorum_threshold"`
+	PostgresHost                    string              `yaml:"postgres_host"`
+	PostgresPort                    string              `yaml:"postgres_port"`
+	PostgresUser                    string              `yaml:"postgres_user"`
+	PostgresPassword                string              `yaml:"postgres_password"`
+	PostgresDatabase                string              `yaml:"postgres_database"`
 }
 
 // NewConfig parses config file to read from from flags or environment variables
@@ -126,6 +133,9 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 	}
 	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, coordinatorAddr)
 
+	dataSource := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		configRaw.PostgresHost, configRaw.PostgresPort, configRaw.PostgresUser, configRaw.PostgresPassword, configRaw.PostgresDatabase)
+
 	config := &Config{
 		EcdsaPrivateKey:                 ecdsaPrivateKey,
 		Logger:                          logger,
@@ -146,6 +156,7 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 		TaskDurationMinutes:             configRaw.TaskDurationMinutes,
 		CoordinatorMetricsIpPortAddress: configRaw.CoordinatorMetricsIpPortAddress,
 		QuorumThreshold:                 configRaw.QuorumThreshold,
+		DataSource:                      dataSource,
 	}
 	config.validate()
 	return config, nil
