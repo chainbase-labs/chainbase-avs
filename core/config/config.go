@@ -43,6 +43,7 @@ type Config struct {
 	CoordinatorMetricsIpPortAddress string
 	QuorumThreshold                 uint8
 	DataSource                      string
+	FilterStartBlock                uint64
 }
 
 // ConfigRaw These are read from ConfigFileFlag
@@ -66,6 +67,7 @@ type ConfigRaw struct {
 	PostgresUser                    string              `yaml:"postgres_user"`
 	PostgresPassword                string              `yaml:"postgres_password"`
 	PostgresDatabase                string              `yaml:"postgres_database"`
+	FilterStartBlock                uint64              `yaml:"filter_start_block"`
 }
 
 // NewConfig parses config file to read from from flags or environment variables
@@ -157,6 +159,7 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 		CoordinatorMetricsIpPortAddress: configRaw.CoordinatorMetricsIpPortAddress,
 		QuorumThreshold:                 configRaw.QuorumThreshold,
 		DataSource:                      dataSource,
+		FilterStartBlock:                configRaw.FilterStartBlock,
 	}
 	config.validate()
 	return config, nil

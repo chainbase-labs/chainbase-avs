@@ -98,6 +98,7 @@ type Coordinator struct {
 	// postgres db
 	db                  *sql.DB
 	registryCoordinator *regcoord.ContractRegistryCoordinator
+	filterStartBlock    uint64
 }
 
 // NewCoordinator creates a new Coordinator with the provided config.
@@ -197,6 +198,7 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 		quorumThreshold:       c.QuorumThreshold,
 		db:                    db,
 		registryCoordinator:   registryCoordinator,
+		filterStartBlock:      c.FilterStartBlock,
 	}, nil
 }
 

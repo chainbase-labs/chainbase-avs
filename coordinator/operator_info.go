@@ -167,7 +167,7 @@ func (c *Coordinator) updateOperatorRegisteredAt(ctx context.Context, operators 
 			end = batchSize
 		}
 
-		operatorRegisteredIterator, err := c.registryCoordinator.FilterOperatorRegistered(&bind.FilterOpts{Context: ctx}, operators[:end], nil)
+		operatorRegisteredIterator, err := c.registryCoordinator.FilterOperatorRegistered(&bind.FilterOpts{Context: ctx, Start: c.filterStartBlock}, operators[:end], nil)
 		if err != nil {
 			return err
 		}
@@ -194,7 +194,7 @@ func (c *Coordinator) updateOperatorRegisteredAt(ctx context.Context, operators 
 }
 
 func (c *Coordinator) updateTasks(ctx context.Context) error {
-	taskCreatedIterator, err := c.avsReader.AvsServiceBindings.ServiceManager.FilterNewTaskCreated(&bind.FilterOpts{Context: ctx}, nil)
+	taskCreatedIterator, err := c.avsReader.AvsServiceBindings.ServiceManager.FilterNewTaskCreated(&bind.FilterOpts{Context: ctx, Start: c.filterStartBlock}, nil)
 	if err != nil {
 		c.logger.Error("Error in filter new task", "err", err)
 		return err
@@ -212,7 +212,7 @@ func (c *Coordinator) updateTasks(ctx context.Context) error {
 		}
 	}
 
-	taskResponseIterator, err := c.avsReader.AvsServiceBindings.ServiceManager.FilterTaskResponded(&bind.FilterOpts{Context: ctx})
+	taskResponseIterator, err := c.avsReader.AvsServiceBindings.ServiceManager.FilterTaskResponded(&bind.FilterOpts{Context: ctx, Start: c.filterStartBlock})
 	if err != nil {
 		c.logger.Error("Error in filter task response", "err", err)
 		return err
