@@ -17,3 +17,11 @@ task_chains:
   - holesky
 task_duration_minutes: 15
 coordinator_metrics_ip_port_address: :9090
+quorum_threshold: 50
+
+# postgres container
+postgres_host: 127.0.0.1
+postgres_port: 5432
+postgres_user: postgres
+postgres_password: postgres
+postgres_database: coordinator

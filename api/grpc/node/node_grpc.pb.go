@@ -21,7 +21,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ManuscriptNodeService_ReceiveNewTask_FullMethodName = "/node.ManuscriptNodeService/ReceiveNewTask"
+	ManuscriptNodeService_ReceiveNewTask_FullMethodName  = "/node.ManuscriptNodeService/ReceiveNewTask"
+	ManuscriptNodeService_GetOperatorInfo_FullMethodName = "/node.ManuscriptNodeService/GetOperatorInfo"
 )
 
 // ManuscriptNodeServiceClient is the client API for ManuscriptNodeService service.
@@ -29,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ManuscriptNodeServiceClient interface {
 	ReceiveNewTask(ctx context.Context, in *NewTaskRequest, opts ...grpc.CallOption) (*NewTaskResponse, error)
+	GetOperatorInfo(ctx context.Context, in *GetOperatorInfoRequest, opts ...grpc.CallOption) (*GetOperatorInfoResponse, error)
 }
 
 type manuscriptNodeServiceClient struct {
@@ -49,11 +51,22 @@ func (c *manuscriptNodeServiceClient) ReceiveNewTask(ctx context.Context, in *Ne
 	return out, nil
 }
 
+func (c *manuscriptNodeServiceClient) GetOperatorInfo(ctx context.Context, in *GetOperatorInfoRequest, opts ...grpc.CallOption) (*GetOperatorInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetOperatorInfoResponse)
+	err := c.cc.Invoke(ctx, ManuscriptNodeService_GetOperatorInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ManuscriptNodeServiceServer is the server API for ManuscriptNodeService service.
 // All implementations must embed UnimplementedManuscriptNodeServiceServer
 // for forward compatibility.
 type ManuscriptNodeServiceServer interface {
 	ReceiveNewTask(context.Context, *NewTaskRequest) (*NewTaskResponse, error)
+	GetOperatorInfo(context.Context, *GetOperatorInfoRequest) (*GetOperatorInfoResponse, error)
 	mustEmbedUnimplementedManuscriptNodeServiceServer()
 }
 
@@ -66,6 +79,9 @@ type UnimplementedManuscriptNodeServiceServer struct{}
 
 func (UnimplementedManuscriptNodeServiceServer) ReceiveNewTask(context.Context, *NewTaskRequest) (*NewTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReceiveNewTask not implemented")
+}
+func (UnimplementedManuscriptNodeServiceServer) GetOperatorInfo(context.Context, *GetOperatorInfoRequest) (*GetOperatorInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetOperatorInfo not implemented")
 }
 func (UnimplementedManuscriptNodeServiceServer) mustEmbedUnimplementedManuscriptNodeServiceServer() {}
 func (UnimplementedManuscriptNodeServiceServer) testEmbeddedByValue()                               {}
@@ -106,6 +122,24 @@ func _ManuscriptNodeService_ReceiveNewTask_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ManuscriptNodeService_GetOperatorInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOperatorInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManuscriptNodeServiceServer).GetOperatorInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ManuscriptNodeService_GetOperatorInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManuscriptNodeServiceServer).GetOperatorInfo(ctx, req.(*GetOperatorInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ManuscriptNodeService_ServiceDesc is the grpc.ServiceDesc for ManuscriptNodeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -116,6 +150,10 @@ var ManuscriptNodeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReceiveNewTask",
 			Handler:    _ManuscriptNodeService_ReceiveNewTask_Handler,
+		},
+		{
+			MethodName: "GetOperatorInfo",
+			Handler:    _ManuscriptNodeService_GetOperatorInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

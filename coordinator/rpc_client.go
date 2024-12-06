@@ -68,3 +68,19 @@ func (c *ManuscriptRpcClient) CreateNewTask(task *nodepb.NewTaskRequest) {
 		return
 	}
 }
+
+func (c *ManuscriptRpcClient) GetOperatorInfo() (*nodepb.GetOperatorInfoResponse, error) {
+	if c.rpcClient == nil {
+		c.logger.Info("rpc client is nil. Dialing manuscript node rpc client")
+		err := c.dialManuscriptRpcClient()
+		if err != nil {
+			c.logger.Error("Could not dial manuscript rpc client. Cannot send new task to Manuscript node.", "err", err)
+			return nil, err
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	return c.rpcClient.GetOperatorInfo(ctx, &nodepb.GetOperatorInfoRequest{})
+}
