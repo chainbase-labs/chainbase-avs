@@ -59,19 +59,33 @@ func (c *Coordinator) updateOperatorsRoutine(ctx context.Context) {
 			taskResponseSub.Unsubscribe()
 			taskResponseSub = c.avsSubscriber.SubscribeToTaskResponses(taskResponseChan)
 		case newTaskCreatedLog := <-newTaskCreatedChan:
-			err := postgres.InsertTask(c.db, &postgres.Task{
+			block, err := c.ethClient.BlockByHash(ctx, newTaskCreatedLog.Raw.BlockHash)
+			if err != nil {
+				c.logger.Error("Error in get block by hash", "err", err)
+				continue
+			}
+
+			err = postgres.UpsertTask(c.db, &postgres.Task{
 				TaskID:       newTaskCreatedLog.TaskIndex,
 				TaskDetail:   newTaskCreatedLog.Task.TaskDetails,
 				CreateTaskTx: newTaskCreatedLog.Raw.TxHash.String(),
+				CreateTaskAt: time.Unix(int64(block.Time()), 0),
 			})
 			if err != nil {
 				c.logger.Error("Error in insert task", "err", err)
 			}
 		case taskResponseLog := <-taskResponseChan:
-			err := postgres.UpdateTaskResponse(c.db,
+			block, err := c.ethClient.BlockByHash(ctx, taskResponseLog.Raw.BlockHash)
+			if err != nil {
+				c.logger.Error("Error in get block by hash", "err", err)
+				continue
+			}
+
+			err = postgres.UpdateTaskResponse(c.db,
 				taskResponseLog.TaskResponse.ReferenceTaskIndex,
 				taskResponseLog.TaskResponse.TaskResponse,
 				taskResponseLog.Raw.TxHash.String(),
+				time.Unix(int64(block.Time()), 0),
 			)
 			if err != nil {
 				c.logger.Error("Error in update task response", "err", err)
@@ -201,10 +215,17 @@ func (c *Coordinator) updateTasks(ctx context.Context) error {
 	}
 
 	for taskCreatedIterator.Next() {
-		err := postgres.InsertTask(c.db, &postgres.Task{
+		block, err := c.ethClient.BlockByHash(ctx, taskCreatedIterator.Event.Raw.BlockHash)
+		if err != nil {
+			c.logger.Error("Error in get block by hash", "err", err)
+			continue
+		}
+
+		err = postgres.UpsertTask(c.db, &postgres.Task{
 			TaskID:       taskCreatedIterator.Event.TaskIndex,
 			TaskDetail:   taskCreatedIterator.Event.Task.TaskDetails,
 			CreateTaskTx: taskCreatedIterator.Event.Raw.TxHash.String(),
+			CreateTaskAt: time.Unix(int64(block.Time()), 0),
 		})
 		if err != nil {
 			c.logger.Error("Error in insert task", "err", err)
@@ -219,10 +240,17 @@ func (c *Coordinator) updateTasks(ctx context.Context) error {
 	}
 
 	for taskResponseIterator.Next() {
-		err := postgres.UpdateTaskResponse(c.db,
+		block, err := c.ethClient.BlockByHash(ctx, taskResponseIterator.Event.Raw.BlockHash)
+		if err != nil {
+			c.logger.Error("Error in get block by hash", "err", err)
+			continue
+		}
+
+		err = postgres.UpdateTaskResponse(c.db,
 			taskResponseIterator.Event.TaskResponse.ReferenceTaskIndex,
 			taskResponseIterator.Event.TaskResponse.TaskResponse,
 			taskResponseIterator.Event.Raw.TxHash.String(),
+			time.Unix(int64(block.Time()), 0),
 		)
 		if err != nil {
 			c.logger.Error("Error in update task response", "err", err)

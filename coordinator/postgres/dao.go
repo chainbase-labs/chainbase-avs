@@ -23,7 +23,9 @@ type Task struct {
 	TaskDetail     string
 	TaskResponse   string
 	CreateTaskTx   string
+	CreateTaskAt   time.Time
 	ResponseTaskTx string
+	ResponseTaskAt time.Time
 }
 
 type OperatorTask struct {
@@ -92,20 +94,25 @@ func QueryOperatorAddressesNoRegisteredAt(db *sql.DB) ([]string, error) {
 	return addresses, err
 }
 
-func InsertTask(db *sql.DB, task *Task) error {
+func UpsertTask(db *sql.DB, task *Task) error {
 	_, err := db.Exec(`
-        INSERT INTO task (task_id, task_detail, create_task_tx) 
-        VALUES ($1, $2, $3)
-        ON CONFLICT (task_id) DO NOTHING;`,
+        INSERT INTO task (task_id, task_detail, create_task_tx, create_task_at) 
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (task_id) DO UPDATE SET
+            task_detail = EXCLUDED.task_detail,
+            create_task_tx = EXCLUDED.create_task_tx,
+            create_task_at = EXCLUDED.create_task_at,
+            updated_at = CURRENT_TIMESTAMP`,
 		task.TaskID,
 		task.TaskDetail,
 		task.CreateTaskTx,
+		task.CreateTaskAt,
 	)
 	return err
 }
 
-func UpdateTaskResponse(db *sql.DB, taskID uint32, taskResponse, responseTaskTx string) error {
-	_, err := db.Exec(`UPDATE task SET task_response = $1, response_task_tx = $2 WHERE task_id = $3 AND task_response is NULL`, taskResponse, responseTaskTx, taskID)
+func UpdateTaskResponse(db *sql.DB, taskID uint32, taskResponse, responseTaskTx string, responseTaskAt time.Time) error {
+	_, err := db.Exec(`UPDATE task SET task_response = $1, response_task_tx = $2, response_task_at = $3 WHERE task_id = $4`, taskResponse, responseTaskTx, responseTaskAt, taskID)
 	return err
 }
 

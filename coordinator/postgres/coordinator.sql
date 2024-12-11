@@ -28,7 +28,9 @@ CREATE TABLE IF NOT EXISTS task
     task_detail      varchar(128) not null,
     task_response    varchar(66),
     create_task_tx   varchar(66),
+    create_task_at   timestamp with time zone,
     response_task_tx varchar(66),
+    response_task_at timestamp with time zone,
     created_at       timestamp with time zone default CURRENT_TIMESTAMP,
     updated_at       timestamp with time zone default CURRENT_TIMESTAMP
 );
@@ -42,3 +44,7 @@ CREATE TABLE IF NOT EXISTS operator_task
     created_at  timestamp with time zone default CURRENT_TIMESTAMP,
     updated_at  timestamp with time zone default CURRENT_TIMESTAMP
 );
+
+-- ALTER TABLE task
+-- ADD COLUMN create_task_at timestamp with time zone,
+-- ADD COLUMN response_task_at timestamp with time zone;
