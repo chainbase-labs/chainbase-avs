@@ -59,19 +59,33 @@ func (c *Coordinator) updateOperatorsRoutine(ctx context.Context) {
 			taskResponseSub.Unsubscribe()
 			taskResponseSub = c.avsSubscriber.SubscribeToTaskResponses(taskResponseChan)
 		case newTaskCreatedLog := <-newTaskCreatedChan:
-			err := postgres.InsertTask(c.db, &postgres.Task{
+			block, err := c.ethClient.BlockByHash(ctx, newTaskCreatedLog.Raw.BlockHash)
+			if err != nil {
+				c.logger.Error("Error in get block by hash", "err", err)
+				continue
+			}
+
+			err = postgres.UpsertTask(c.db, &postgres.Task{
 				TaskID:       newTaskCreatedLog.TaskIndex,
 				TaskDetail:   newTaskCreatedLog.Task.TaskDetails,
 				CreateTaskTx: newTaskCreatedLog.Raw.TxHash.String(),
+				CreateTaskAt: time.Unix(int64(block.Time()), 0),
 			})
 			if err != nil {
 				c.logger.Error("Error in insert task", "err", err)
 			}
 		case taskResponseLog := <-taskResponseChan:
-			err := postgres.UpdateTaskResponse(c.db,
+			block, err := c.ethClient.BlockByHash(ctx, taskResponseLog.Raw.BlockHash)
+			if err != nil {
+				c.logger.Error("Error in get block by hash", "err", err)
+				continue
+			}
+
+			err = postgres.UpdateTaskResponse(c.db,
 				taskResponseLog.TaskResponse.ReferenceTaskIndex,
 				taskResponseLog.TaskResponse.TaskResponse,
 				taskResponseLog.Raw.TxHash.String(),
+				time.Unix(int64(block.Time()), 0),
 			)
 			if err != nil {
 				c.logger.Error("Error in update task response", "err", err)
@@ -167,7 +181,7 @@ func (c *Coordinator) updateOperatorRegisteredAt(ctx context.Context, operators 
 			end = batchSize
 		}
 
-		operatorRegisteredIterator, err := c.registryCoordinator.FilterOperatorRegistered(&bind.FilterOpts{Context: ctx}, operators[:end], nil)
+		operatorRegisteredIterator, err := c.registryCoordinator.FilterOperatorRegistered(&bind.FilterOpts{Context: ctx, Start: c.filterStartBlock}, operators[:end], nil)
 		if err != nil {
 			return err
 		}
@@ -194,17 +208,24 @@ func (c *Coordinator) updateOperatorRegisteredAt(ctx context.Context, operators 
 }
 
 func (c *Coordinator) updateTasks(ctx context.Context) error {
-	taskCreatedIterator, err := c.avsReader.AvsServiceBindings.ServiceManager.FilterNewTaskCreated(&bind.FilterOpts{Context: ctx}, nil)
+	taskCreatedIterator, err := c.avsReader.AvsServiceBindings.ServiceManager.FilterNewTaskCreated(&bind.FilterOpts{Context: ctx, Start: c.filterStartBlock}, nil)
 	if err != nil {
 		c.logger.Error("Error in filter new task", "err", err)
 		return err
 	}
 
 	for taskCreatedIterator.Next() {
-		err := postgres.InsertTask(c.db, &postgres.Task{
+		block, err := c.ethClient.BlockByHash(ctx, taskCreatedIterator.Event.Raw.BlockHash)
+		if err != nil {
+			c.logger.Error("Error in get block by hash", "err", err)
+			continue
+		}
+
+		err = postgres.UpsertTask(c.db, &postgres.Task{
 			TaskID:       taskCreatedIterator.Event.TaskIndex,
 			TaskDetail:   taskCreatedIterator.Event.Task.TaskDetails,
 			CreateTaskTx: taskCreatedIterator.Event.Raw.TxHash.String(),
+			CreateTaskAt: time.Unix(int64(block.Time()), 0),
 		})
 		if err != nil {
 			c.logger.Error("Error in insert task", "err", err)
@@ -212,17 +233,24 @@ func (c *Coordinator) updateTasks(ctx context.Context) error {
 		}
 	}
 
-	taskResponseIterator, err := c.avsReader.AvsServiceBindings.ServiceManager.FilterTaskResponded(&bind.FilterOpts{Context: ctx})
+	taskResponseIterator, err := c.avsReader.AvsServiceBindings.ServiceManager.FilterTaskResponded(&bind.FilterOpts{Context: ctx, Start: c.filterStartBlock})
 	if err != nil {
 		c.logger.Error("Error in filter task response", "err", err)
 		return err
 	}
 
 	for taskResponseIterator.Next() {
-		err := postgres.UpdateTaskResponse(c.db,
+		block, err := c.ethClient.BlockByHash(ctx, taskResponseIterator.Event.Raw.BlockHash)
+		if err != nil {
+			c.logger.Error("Error in get block by hash", "err", err)
+			continue
+		}
+
+		err = postgres.UpdateTaskResponse(c.db,
 			taskResponseIterator.Event.TaskResponse.ReferenceTaskIndex,
 			taskResponseIterator.Event.TaskResponse.TaskResponse,
 			taskResponseIterator.Event.Raw.TxHash.String(),
+			time.Unix(int64(block.Time()), 0),
 		)
 		if err != nil {
 			c.logger.Error("Error in update task response", "err", err)

@@ -25,3 +25,4 @@ postgres_port: 5432
 postgres_user: postgres
 postgres_password: postgres
 postgres_database: coordinator
+filter_start_block: 21082973
