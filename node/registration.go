@@ -6,16 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/big"
 
 	"github.com/Layr-Labs/eigensdk-go/chainio/utils"
 	eigenSdkTypes "github.com/Layr-Labs/eigensdk-go/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/pkg/errors"
-
-	"github.com/chainbase-labs/chainbase-avs/node/bindings"
 )
 
 func (n *ManuscriptNode) RegisterOperatorWithEigenlayer() error {
@@ -125,110 +119,6 @@ func (n *ManuscriptNode) DeregisterOperatorWithAvs() error {
 		return err
 	}
 	n.logger.Infof("Deregistered operator with avs registry coordinator")
-
-	return nil
-}
-
-func (n *ManuscriptNode) StakeIntoStaking(amount *big.Int) error {
-	cTokenAddress := common.HexToAddress(n.config.CContractAddress)
-	stakingAddress := common.HexToAddress(n.config.StakingContractAddress)
-	stakeAmount := amount.Mul(amount, big.NewInt(10^18))
-
-	chainbaseRpcClient, err := ethclient.Dial(n.config.ChainbaseRpcUrl)
-	if err != nil {
-		return errors.Wrap(err, "failed to create chainbase client")
-	}
-
-	CToken, err := bindings.NewChainbaseToken(cTokenAddress, chainbaseRpcClient)
-	if err != nil {
-		return errors.Wrap(err, "failed to create chainbase token binding")
-	}
-
-	txOpts, err := n.avsWriter.TxMgr.GetNoSendTxOpts()
-	tx, err := CToken.Approve(txOpts, stakingAddress, stakeAmount)
-	if err != nil {
-		return errors.Wrap(err, "Failed to approve c token transfer")
-	}
-
-	_, err = n.avsWriter.TxMgr.Send(context.Background(), tx, true)
-	if err != nil {
-		return errors.Wrap(err, "Failed to send approve tx")
-	}
-
-	staking, err := bindings.NewStaking(stakingAddress, chainbaseRpcClient)
-	if err != nil {
-		return errors.Wrap(err, "failed to create staking binding")
-	}
-
-	tx, err = staking.Stake(txOpts, stakeAmount)
-	if err != nil {
-		return errors.Wrap(err, "failed to create stake tx")
-	}
-
-	receipt, err := n.avsWriter.TxMgr.Send(context.Background(), tx, true)
-	if err != nil {
-		return errors.Wrap(err, "failed to send stake tx")
-	}
-
-	n.logger.Infof("stake %s into staking contract tx hash %s", amount.String(), receipt.TxHash.String())
-
-	return nil
-}
-
-func (n *ManuscriptNode) UnstakeFromStaking() error {
-	stakingAddress := common.HexToAddress(n.config.StakingContractAddress)
-
-	chainbaseRpcClient, err := ethclient.Dial(n.config.ChainbaseRpcUrl)
-	if err != nil {
-		return errors.Wrap(err, "failed to create chainbase client")
-	}
-
-	txOpts, err := n.avsWriter.TxMgr.GetNoSendTxOpts()
-	staking, err := bindings.NewStaking(stakingAddress, chainbaseRpcClient)
-	if err != nil {
-		return errors.Wrap(err, "failed to create staking binding")
-	}
-
-	tx, err := staking.Unstake(txOpts)
-	if err != nil {
-		return errors.Wrap(err, "failed to create unstake tx")
-	}
-
-	receipt, err := n.avsWriter.TxMgr.Send(context.Background(), tx, true)
-	if err != nil {
-		return errors.Wrap(err, "failed to send unstake tx")
-	}
-
-	n.logger.Infof("unstake from staking contract tx hash %s", receipt.TxHash.String())
-
-	return nil
-}
-
-func (n *ManuscriptNode) WithdrawFromStaking() error {
-	stakingAddress := common.HexToAddress(n.config.StakingContractAddress)
-
-	chainbaseRpcClient, err := ethclient.Dial(n.config.ChainbaseRpcUrl)
-	if err != nil {
-		return errors.Wrap(err, "failed to create chainbase client")
-	}
-
-	txOpts, err := n.avsWriter.TxMgr.GetNoSendTxOpts()
-	staking, err := bindings.NewStaking(stakingAddress, chainbaseRpcClient)
-	if err != nil {
-		return errors.Wrap(err, "failed to create staking binding")
-	}
-
-	tx, err := staking.WithdrawStake(txOpts)
-	if err != nil {
-		return errors.Wrap(err, "failed to create withdraw tx")
-	}
-
-	receipt, err := n.avsWriter.TxMgr.Send(context.Background(), tx, true)
-	if err != nil {
-		return errors.Wrap(err, "failed to send withdraw tx")
-	}
-
-	n.logger.Infof("withdraw from staking contract tx hash %s", receipt.TxHash.String())
 
 	return nil
 }

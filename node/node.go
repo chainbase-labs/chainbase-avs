@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -35,6 +34,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	coordinatorpb "github.com/chainbase-labs/chainbase-avs/api/grpc/coordinator"
@@ -87,6 +87,9 @@ type ManuscriptNode struct {
 	jobManagerHost string
 	// job manager port
 	jobManagerPort string
+	// send transactions to chainbase network
+	chainbaseClient chainio.EthClientInterface
+	chainbaseTxMgr  txmgr.TxManager
 }
 
 func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, error) {
@@ -232,6 +235,32 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 	dataSource := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		c.PostgresHost, c.PostgresPort, c.PostgresUser, c.PostgresPassword, c.PostgresDatabase)
 
+	chainbaseClient, err := ethclient.Dial(c.ChainbaseRpcUrl)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create chainbase client")
+	}
+
+	chainbaseChainId, err := chainbaseClient.ChainID(context.Background())
+	if err != nil {
+		logger.Error("Cannot get chainId", "err", err)
+		return nil, err
+	}
+
+	chainbaseSignerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
+		KeystorePath: c.EcdsaPrivateKeyStorePath,
+		Password:     ecdsaKeyPassword,
+	}, chainbaseChainId)
+	if err != nil {
+		panic(err)
+	}
+
+	chainbaseSkWallet, err := wallet.NewPrivateKeyWallet(chainbaseClient, chainbaseSignerV2, common.HexToAddress(operatorAddress), logger)
+	if err != nil {
+		panic(err)
+	}
+
+	chainbaseTxMgr := txmgr.NewSimpleTxManager(chainbaseSkWallet, chainbaseClient, logger, common.HexToAddress(operatorAddress))
+
 	msNode := &ManuscriptNode{
 		config:                      c,
 		logger:                      logger,
@@ -256,6 +285,8 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 		dockerClient:                cli,
 		jobManagerHost:              c.JobManagerHost,
 		jobManagerPort:              c.JobManagerPort,
+		chainbaseClient:             chainbaseClient,
+		chainbaseTxMgr:              chainbaseTxMgr,
 	}
 
 	if !cliCommand {
