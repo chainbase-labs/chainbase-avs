@@ -31,3 +31,10 @@ postgres_database: manuscript_node
 # job manager container
 job_manager_host: chainbase_jobmanager
 job_manager_port: 8081
+
+# Chainbase RPC URL
+chainbase_rpc_url: https://testnet.s.chainbase.com
+
+# Staking Contract
+c_contract_address: 0xe30a02df61b661140938b8e0b910cd81b466a46b
+staking_contract_address: 0x721b03DF571aFd7CE5702176cF5979d1d863B815
