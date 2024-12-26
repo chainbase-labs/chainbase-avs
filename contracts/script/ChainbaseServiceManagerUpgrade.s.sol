@@ -22,17 +22,11 @@ contract ChainbaseServiceManagerUpgrade is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        address owner = vm.addr(deployerPrivateKey);
-
         DeploymentAddresses memory addresses = getDeploymentAddresses();
         ChainbaseServiceManager newImplementation = createNewImplementation(addresses);
 
-        ProxyAdmin(addresses.proxyAdmin).upgradeAndCall(
-            ITransparentUpgradeableProxy(addresses.chainbaseServiceManagerProxy),
-            address(newImplementation),
-            abi.encodeWithSelector(
-                ChainbaseServiceManager.initialize.selector, owner, owner, EigenHoleSkyDeployments.Slasher, owner, owner
-            )
+        ProxyAdmin(addresses.proxyAdmin).upgrade(
+            ITransparentUpgradeableProxy(addresses.chainbaseServiceManagerProxy), address(newImplementation)
         );
 
         vm.stopBroadcast();
