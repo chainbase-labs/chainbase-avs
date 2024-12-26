@@ -108,7 +108,11 @@ func (c *Coordinator) updateOperatorsRoutine(ctx context.Context) {
 func (c *Coordinator) updateOperators(ctx context.Context) error {
 	quorumNumbers := sdktypes.QuorumNums{sdktypes.QuorumNum(0)}
 	// Get operator state for each quorum by querying OperatorStateRetriever
-	operatorsStakesInQuorums, err := c.avsRegistryService.GetOperatorsStakeInQuorumsAtCurrentBlock(&bind.CallOpts{Context: ctx}, quorumNumbers)
+	currentBlockNumber, err := c.ethClient.BlockNumber(context.Background())
+	if err != nil {
+		return errors.Wrap(err, "Failed to get block number")
+	}
+	operatorsStakesInQuorums, err := c.avsRegistryService.GetOperatorsStakeInQuorumsAtBlock(&bind.CallOpts{Context: ctx}, quorumNumbers, sdktypes.BlockNum(currentBlockNumber))
 	if err != nil {
 		return errors.Wrap(err, "Failed to get operator state")
 	}

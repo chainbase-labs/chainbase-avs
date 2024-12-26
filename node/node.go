@@ -33,6 +33,7 @@ import (
 	dockerClient "github.com/docker/docker/client"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -52,14 +53,14 @@ type ManuscriptNode struct {
 	nodepb.UnimplementedManuscriptNodeServiceServer
 	config           types.NodeConfig
 	logger           logging.Logger
-	ethClient        eth.Client
+	ethClient        chainio.EthClientInterface
 	metricsReg       *prometheus.Registry
 	metrics          metrics.Metrics
 	nodeApi          *nodeapi.NodeApi
 	avsWriter        *chainio.AvsWriter
-	avsReader        chainio.IAvsReader
-	eigenlayerReader sdkelcontracts.ELReader
-	eigenlayerWriter sdkelcontracts.ELWriter
+	avsReader        *chainio.AvsReader
+	eigenlayerReader sdkelcontracts.ChainReader
+	eigenlayerWriter sdkelcontracts.ChainWriter
 	blsKeypair       *bls.KeyPair
 	operatorId       sdktypes.OperatorId
 	operatorAddr     common.Address
@@ -106,7 +107,7 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 	// Setup Node Api
 	nodeApi := nodeapi.NewNodeApi(AvsName, SemVer, c.NodeApiIpPortAddress, logger)
 
-	var ethRpcClient eth.Client
+	var ethRpcClient chainio.EthClientInterface
 	if c.EnableMetrics {
 		rpcCallsCollector := rpccalls.NewCollector(AvsName, reg)
 		ethRpcClient, err = eth.NewInstrumentedClient(c.EthRpcUrl, rpcCallsCollector)
@@ -115,7 +116,7 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 			return nil, err
 		}
 	} else {
-		ethRpcClient, err = eth.NewClient(c.EthRpcUrl)
+		ethRpcClient, err = ethclient.Dial(c.EthRpcUrl)
 		if err != nil {
 			logger.Error("Cannot create http eth client", "err", err)
 			return nil, err
@@ -240,8 +241,8 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 		ethClient:                   ethRpcClient,
 		avsWriter:                   avsWriter,
 		avsReader:                   avsReader,
-		eigenlayerReader:            sdkClients.ElChainReader,
-		eigenlayerWriter:            sdkClients.ElChainWriter,
+		eigenlayerReader:            *sdkClients.ElChainReader,
+		eigenlayerWriter:            *sdkClients.ElChainWriter,
 		blsKeypair:                  blsKeyPair,
 		operatorAddr:                common.HexToAddress(operatorAddress),
 		coordinatorServerIpPortAddr: c.CoordinatorServerIpPortAddress,

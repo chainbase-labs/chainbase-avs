@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity = 0.8.24;
+pragma solidity = 0.8.27;
 
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
 import "@eigenlayer-middleware/src/BLSSignatureChecker.sol";
@@ -45,11 +45,13 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
      */
     constructor(
         IAVSDirectory _avsDirectory, // AVSDirectory address
+        IRewardsCoordinator _rewardsCoordinator, // RewardsCoordinator address
         IRegistryCoordinator _registryCoordinator, // RegistryCoordinator address
-        IStakeRegistry _stakeRegistry // StakeRegistry address
+        IStakeRegistry _stakeRegistry, // StakeRegistry address
+        IAllocationManager _allocationManager // AllocationManager address
     )
         BLSSignatureChecker(_registryCoordinator)
-        ServiceManagerBase(_avsDirectory, _registryCoordinator, _stakeRegistry)
+        ServiceManagerBase(_avsDirectory, _rewardsCoordinator, _registryCoordinator, _stakeRegistry, _allocationManager)
     {}
 
     //=========================================================================
@@ -61,8 +63,14 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
      * @param _aggregator Address of the aggregator
      * @param _generator Address of the generator
      */
-    function initialize(address initialOwner, address _aggregator, address _generator) public initializer {
-        __ServiceManagerBase_init(initialOwner);
+    function initialize(
+        address initialOwner,
+        address _rewardsInitiator,
+        address _slasher,
+        address _aggregator,
+        address _generator
+    ) public initializer {
+        __ServiceManagerBase_init(initialOwner, _rewardsInitiator, _slasher);
         aggregator = _aggregator;
         generator = _generator;
     }
@@ -199,7 +207,7 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
             // signed stake > total stake
             require(
                 quorumStakeTotals.signedStakeForQuorum[i] * _THRESHOLD_DENOMINATOR
-                     >= quorumStakeTotals.totalStakeForQuorum[i] * quorumThresholdPercentage,
+                    >= quorumStakeTotals.totalStakeForQuorum[i] * quorumThresholdPercentage,
                 "ChainbaseServiceManager: signatories do not own at least threshold percentage of a quorum"
             );
         }

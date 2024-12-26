@@ -1,14 +1,19 @@
 package core
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"math/big"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"golang.org/x/crypto/sha3"
+	"gopkg.in/yaml.v3"
 
 	"github.com/chainbase-labs/chainbase-avs/contracts/bindings"
 )
@@ -139,4 +144,29 @@ func ParseTaskDetails(details string) (*TaskDetails, error) {
 		Difficulty: difficulty,
 		Deadline:   deadline,
 	}, nil
+}
+
+func ReadFile(path string) ([]byte, error) {
+	b, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func ReadYamlConfig(path string, o interface{}) error {
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		log.Fatal("Path ", path, " does not exist")
+	}
+	b, err := ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	err = yaml.Unmarshal(b, o)
+	if err != nil {
+		log.Fatalf("unable to parse file with error %#v", err)
+	}
+
+	return nil
 }

@@ -6,9 +6,9 @@ import (
 	"log"
 	"os"
 
-	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/urfave/cli"
 
+	"github.com/chainbase-labs/chainbase-avs/core"
 	"github.com/chainbase-labs/chainbase-avs/core/config"
 	"github.com/chainbase-labs/chainbase-avs/node"
 	"github.com/chainbase-labs/chainbase-avs/node/types"
@@ -32,7 +32,7 @@ func nodeMain(ctx *cli.Context) error {
 	log.Println("Initializing manuscript node")
 	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
 	nodeConfig := types.NodeConfig{}
-	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
+	err := core.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {
 		return err
 	}

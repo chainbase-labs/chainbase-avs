@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/wallet"
 	"github.com/Layr-Labs/eigensdk-go/chainio/txmgr"
 	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
@@ -15,7 +14,10 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/signerv2"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
+
+	"github.com/chainbase-labs/chainbase-avs/core"
 )
 
 // Config contains all of the configuration information for a coordinators.
@@ -26,8 +28,8 @@ type Config struct {
 	// only take an ethClient or an rpcUrl (and build the ethClient at each constructor site)
 	EthHttpRpcUrl               string
 	EthWsRpcUrl                 string
-	EthHttpClient               eth.Client `json:"-"`
-	EthWsClient                 eth.Client `json:"-"`
+	EthHttpClient               *ethclient.Client `json:"-"`
+	EthWsClient                 *ethclient.Client `json:"-"`
 	OperatorStateRetrieverAddr  common.Address
 	RegistryCoordinatorAddr     common.Address
 	CoordinatorServerIpPortAddr string
@@ -77,7 +79,7 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 	var configRaw ConfigRaw
 	configFilePath := ctx.GlobalString(ConfigFileFlag.Name)
 	if configFilePath != "" {
-		err := sdkutils.ReadYamlConfig(configFilePath, &configRaw)
+		err := core.ReadYamlConfig(configFilePath, &configRaw)
 		if err != nil {
 			return nil, err
 		}
@@ -88,13 +90,13 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 		return nil, err
 	}
 
-	ethRpcClient, err := eth.NewClient(configRaw.EthRpcUrl)
+	ethRpcClient, err := ethclient.Dial(configRaw.EthRpcUrl)
 	if err != nil {
 		logger.Error("Cannot create http ethClient", "err", err)
 		return nil, err
 	}
 
-	ethWsClient, err := eth.NewClient(configRaw.EthWsUrl)
+	ethWsClient, err := ethclient.Dial(configRaw.EthWsUrl)
 	if err != nil {
 		logger.Error("Cannot create ws ethClient", "err", err)
 		return nil, err

@@ -13,11 +13,11 @@ import (
 
 type AvsManagersBindings struct {
 	ServiceManager *bindings.ChainbaseServiceManager
-	ethClient      eth.Client
+	ethClient      eth.HttpBackend
 	logger         logging.Logger
 }
 
-func NewAvsManagersBindings(registryCoordinatorAddr, _ gethcommon.Address, ethClient eth.Client, logger logging.Logger) (*AvsManagersBindings, error) {
+func NewAvsManagersBindings(registryCoordinatorAddr, _ gethcommon.Address, ethClient EthClientInterface, logger logging.Logger) (*AvsManagersBindings, error) {
 	contractRegistryCoordinator, err := regcoord.NewContractRegistryCoordinator(registryCoordinatorAddr, ethClient)
 	if err != nil {
 		return nil, err

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity = 0.8.24;
+pragma solidity = 0.8.27;
 
 import "@eigenlayer-middleware/src/interfaces/IBLSSignatureChecker.sol";
 

@@ -12,7 +12,6 @@ import (
 
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"
-	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	regcoord "github.com/Layr-Labs/eigensdk-go/contracts/bindings/RegistryCoordinator"
 	"github.com/Layr-Labs/eigensdk-go/logging"
 	sdkmetrics "github.com/Layr-Labs/eigensdk-go/metrics"
@@ -20,6 +19,7 @@ import (
 	blsagg "github.com/Layr-Labs/eigensdk-go/services/bls_aggregation"
 	oprsinfoserv "github.com/Layr-Labs/eigensdk-go/services/operatorsinfo"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -73,9 +73,9 @@ type Coordinator struct {
 	coordinatorpb.UnimplementedCoordinatorServiceServer
 	logger           logging.Logger
 	serverIpPortAddr string
-	ethClient        eth.Client
+	ethClient        *ethclient.Client
 	avsReader        *chainio.AvsReader
-	avsWriter        chainio.IAvsWriter
+	avsWriter        *chainio.AvsWriter
 	avsSubscriber    chainio.IAvsSubscriber
 	// receive new tasks in this chan (typically from listening to onchain event)
 	newTaskCreatedChan chan *bindings.ChainbaseServiceManagerNewTaskCreated
@@ -152,7 +152,7 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 		return taskResponseDigest, nil
 	}
 
-	operatorsInfoService := oprsinfoserv.NewOperatorsInfoServiceInMemory(context.Background(), chainClients.AvsRegistryChainSubscriber, chainClients.AvsRegistryChainReader, nil, c.Logger)
+	operatorsInfoService := oprsinfoserv.NewOperatorsInfoServiceInMemory(context.Background(), chainClients.AvsRegistryChainSubscriber, chainClients.AvsRegistryChainReader, nil, oprsinfoserv.Opts{}, c.Logger)
 	avsRegistryService := avsregistry.NewAvsRegistryServiceChainCaller(avsReader, operatorsInfoService, c.Logger)
 	blsAggregationService := blsagg.NewBlsAggregatorService(avsRegistryService, hashFunction, c.Logger)
 	flinkClient := NewFlinkClient(c.FlinkGatewayHttpUrl, c.OssAccessKeyId, c.OssAccessKeySecret)
@@ -180,7 +180,7 @@ func NewCoordinator(c *config.Config) (*Coordinator, error) {
 	return &Coordinator{
 		logger:                c.Logger,
 		serverIpPortAddr:      c.CoordinatorServerIpPortAddr,
-		ethClient:             chainClients.EthHttpClient,
+		ethClient:             chainClients.EthHttpClient.(*ethclient.Client),
 		avsReader:             avsReader,
 		avsWriter:             avsWriter,
 		avsSubscriber:         avsSubscriber,

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/Layr-Labs/eigensdk-go/chainio/clients/avsregistry"
 	"github.com/Layr-Labs/eigensdk-go/chainio/utils"
 	eigenSdkTypes "github.com/Layr-Labs/eigensdk-go/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,10 +20,9 @@ import (
 
 func (n *ManuscriptNode) RegisterOperatorWithEigenlayer() error {
 	op := eigenSdkTypes.Operator{
-		Address:                 n.operatorAddr.String(),
-		EarningsReceiverAddress: n.operatorAddr.String(),
+		Address: n.operatorAddr.String(),
 	}
-	_, err := n.eigenlayerWriter.RegisterAsOperator(context.Background(), op)
+	_, err := n.eigenlayerWriter.RegisterAsOperator(context.Background(), op, true)
 	if err != nil {
 		n.logger.Error("Error registering operator with eigenlayer", "err", err)
 		return err
@@ -47,6 +45,7 @@ func (n *ManuscriptNode) RegisterOperatorWithAvs(
 		n.blsKeypair,
 		quorumNumbers,
 		socket,
+		true,
 	)
 	if err != nil {
 		n.logger.Errorf("Unable to register operator with avs registry coordinator")
@@ -95,10 +94,11 @@ func (n *ManuscriptNode) PrintOperatorStatus() error {
 
 // UpdateOperatorSocket update operator socket
 func (n *ManuscriptNode) UpdateOperatorSocket() error {
-	avsRegistryChainWriter := n.avsWriter.AvsRegistryWriter.(*avsregistry.AvsRegistryChainWriter)
+	avsRegistryChainWriter := n.avsWriter.ChainWriter
 	_, err := avsRegistryChainWriter.UpdateSocket(
 		context.Background(),
 		eigenSdkTypes.Socket(n.nodeSocket),
+		true,
 	)
 	if err != nil {
 		n.logger.Errorf("Unable to update operator socket")
@@ -118,6 +118,7 @@ func (n *ManuscriptNode) DeregisterOperatorWithAvs() error {
 		context.Background(),
 		quorumNumbers,
 		pubkey,
+		true,
 	)
 	if err != nil {
 		n.logger.Errorf("Unable to deregister operator with avs registry coordinator")
@@ -149,7 +150,7 @@ func (n *ManuscriptNode) StakeIntoStaking(amount *big.Int) error {
 		return errors.Wrap(err, "Failed to approve c token transfer")
 	}
 
-	_, err = n.avsWriter.TxMgr.Send(context.Background(), tx)
+	_, err = n.avsWriter.TxMgr.Send(context.Background(), tx, true)
 	if err != nil {
 		return errors.Wrap(err, "Failed to send approve tx")
 	}
@@ -164,7 +165,7 @@ func (n *ManuscriptNode) StakeIntoStaking(amount *big.Int) error {
 		return errors.Wrap(err, "failed to create stake tx")
 	}
 
-	receipt, err := n.avsWriter.TxMgr.Send(context.Background(), tx)
+	receipt, err := n.avsWriter.TxMgr.Send(context.Background(), tx, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to send stake tx")
 	}
@@ -193,7 +194,7 @@ func (n *ManuscriptNode) UnstakeFromStaking() error {
 		return errors.Wrap(err, "failed to create unstake tx")
 	}
 
-	receipt, err := n.avsWriter.TxMgr.Send(context.Background(), tx)
+	receipt, err := n.avsWriter.TxMgr.Send(context.Background(), tx, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to send unstake tx")
 	}
@@ -222,7 +223,7 @@ func (n *ManuscriptNode) WithdrawFromStaking() error {
 		return errors.Wrap(err, "failed to create withdraw tx")
 	}
 
-	receipt, err := n.avsWriter.TxMgr.Send(context.Background(), tx)
+	receipt, err := n.avsWriter.TxMgr.Send(context.Background(), tx, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to send withdraw tx")
 	}

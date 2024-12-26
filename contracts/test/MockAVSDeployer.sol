@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 
@@ -13,6 +13,7 @@ import "@eigenlayer-middleware/src/OperatorStateRetriever.sol";
 import "@eigenlayer-middleware/lib/eigenlayer-contracts/src/contracts/permissions/PauserRegistry.sol";
 
 import "../src/ChainbaseServiceManager.sol";
+import {EigenMainnetDeployments} from "../script/EigenDeployments.s.sol";
 
 contract MockAVSDeployer is Test {
     address public multiSigManager;
@@ -44,17 +45,27 @@ contract MockAVSDeployer is Test {
         aggregator = address(this);
         generator = address(this);
 
-        address delegationManager = vm.envAddress("DELEGATION_MANAGER");
-        address avsDirectory = vm.envAddress("AVS_DIRECTORY");
+        address delegationManager = EigenMainnetDeployments.DelegationManager;
+        address avsDirectory = EigenMainnetDeployments.AVSDirectory;
+        address rewardsCoordinator = EigenMainnetDeployments.RewardsCoordinator;
+        address allocationManager = EigenMainnetDeployments.AllocationManager;
 
         deployedStrategyArray.push(IStrategy(address(0x0)));
 
-        _deployChainbaseServiceManagerContracts(IDelegationManager(delegationManager), IAVSDirectory(avsDirectory));
+        _deployChainbaseServiceManagerContracts(
+            IDelegationManager(delegationManager),
+            IAVSDirectory(avsDirectory),
+            IRewardsCoordinator(rewardsCoordinator),
+            IAllocationManager(allocationManager)
+        );
     }
 
-    function _deployChainbaseServiceManagerContracts(IDelegationManager delegationManager, IAVSDirectory avsDirectory)
-    internal
-    {
+    function _deployChainbaseServiceManagerContracts(
+        IDelegationManager delegationManager,
+        IAVSDirectory avsDirectory,
+        IRewardsCoordinator rewardsCoordinator,
+        IAllocationManager allocationManager
+    ) internal {
         uint256 numStrategies = deployedStrategyArray.length;
 
         // deploy proxy admin for ability to upgrade proxy contracts
@@ -78,13 +89,13 @@ contract MockAVSDeployer is Test {
          * not yet deployed, we give these proxies an empty contract as the initial implementation, to act as if they have no code.
          */
         blsApkRegistryProxy =
-                        IBLSApkRegistry(address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), "")));
+            IBLSApkRegistry(address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), "")));
 
         indexRegistryProxy =
-                        IIndexRegistry(address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), "")));
+            IIndexRegistry(address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), "")));
 
         stakeRegistryProxy =
-                        IStakeRegistry(address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), "")));
+            IStakeRegistry(address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), "")));
 
         registryCoordinatorProxy = RegistryCoordinator(
             address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), ""))
@@ -111,7 +122,9 @@ contract MockAVSDeployer is Test {
                 ITransparentUpgradeableProxy(payable(address(indexRegistryProxy))), address(indexRegistryImplementation)
             );
 
-            stakeRegistryImplementation = new StakeRegistry(registryCoordinatorProxy, delegationManager);
+            stakeRegistryImplementation = new StakeRegistry(
+                registryCoordinatorProxy, delegationManager, avsDirectory, chainbaseServiceManagerProxy
+            );
 
             proxyAdmin.upgrade(
                 ITransparentUpgradeableProxy(payable(address(stakeRegistryProxy))), address(stakeRegistryImplementation)
@@ -122,7 +135,9 @@ contract MockAVSDeployer is Test {
             IServiceManager(address(chainbaseServiceManagerProxy)),
             IStakeRegistry(address(stakeRegistryProxy)),
             IBLSApkRegistry(address(blsApkRegistryProxy)),
-            IIndexRegistry(address(indexRegistryProxy))
+            IIndexRegistry(address(indexRegistryProxy)),
+            avsDirectory,
+            pauserRegistry
         );
 
         {
@@ -130,7 +145,7 @@ contract MockAVSDeployer is Test {
             // for each quorum to setup, we need to define
             // QuorumOperatorSetParam, minimumStakeForQuorum, and strategyParams
             IRegistryCoordinator.OperatorSetParam[] memory quorumsOperatorSetParams =
-                        new IRegistryCoordinator.OperatorSetParam[](numQuorums);
+                new IRegistryCoordinator.OperatorSetParam[](numQuorums);
             for (uint256 i = 0; i < numQuorums; i++) {
                 // hard code these for now
                 quorumsOperatorSetParams[i] = IRegistryCoordinator.OperatorSetParam({
@@ -142,16 +157,16 @@ contract MockAVSDeployer is Test {
             // set to 0 for every quorum
             uint96[] memory quorumsMinimumStake = new uint96[](numQuorums);
             IStakeRegistry.StrategyParams[][] memory quorumsStrategyParams =
-                        new IStakeRegistry.StrategyParams[][](numQuorums);
+                new IStakeRegistry.StrategyParams[][](numQuorums);
             for (uint256 i = 0; i < numQuorums; i++) {
                 quorumsStrategyParams[i] = new IStakeRegistry.StrategyParams[](numStrategies);
                 for (uint256 j = 0; j < numStrategies; j++) {
                     quorumsStrategyParams[i][j] = IStakeRegistry.StrategyParams({
                         strategy: deployedStrategyArray[j],
-                    // setting this to 1 ether since the divisor is also 1 ether
-                    // therefore this allows an operator to register with even just 1 token
-                    // see https://github.com/Layr-Labs/eigenlayer-middleware/blob/m2-mainnet/src/StakeRegistry.sol#L484
-                    //    weight += uint96(sharesAmount * strategyAndMultiplier.multiplier / WEIGHTING_DIVISOR);
+                        // setting this to 1 ether since the divisor is also 1 ether
+                        // therefore this allows an operator to register with even just 1 token
+                        // see https://github.com/Layr-Labs/eigenlayer-middleware/blob/m2-mainnet/src/StakeRegistry.sol#L484
+                        //    weight += uint96(sharesAmount * strategyAndMultiplier.multiplier / WEIGHTING_DIVISOR);
                         multiplier: 1 ether
                     });
                 }
@@ -173,8 +188,9 @@ contract MockAVSDeployer is Test {
             );
         }
 
-        chainbaseServiceManagerImplementation =
-                    new ChainbaseServiceManager(avsDirectory, registryCoordinatorProxy, stakeRegistryProxy);
+        chainbaseServiceManagerImplementation = new ChainbaseServiceManager(
+            avsDirectory, rewardsCoordinator, registryCoordinatorProxy, stakeRegistryProxy, allocationManager
+        );
 
         proxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(payable(address(chainbaseServiceManagerProxy))),
