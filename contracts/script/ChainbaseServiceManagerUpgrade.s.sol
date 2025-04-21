@@ -49,8 +49,9 @@ contract ChainbaseServiceManagerUpgrade is Script {
         return new ChainbaseServiceManager(
             IAVSDirectory(EigenHoleSkyDeployments.AVSDirectory),
             IRewardsCoordinator(EigenHoleSkyDeployments.RewardsCoordinator),
-            IRegistryCoordinator(addresses.registryCoordinatorProxy),
+            ISlashingRegistryCoordinator(addresses.registryCoordinatorProxy),
             IStakeRegistry(addresses.stakeRegistryProxy),
+            IPermissionController(EigenHoleSkyDeployments.PermissionController),
             IAllocationManager(EigenHoleSkyDeployments.AllocationManager)
         );
     }

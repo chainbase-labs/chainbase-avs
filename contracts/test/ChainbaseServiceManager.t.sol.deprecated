@@ -71,7 +71,7 @@ contract ChainbaseServiceManagerTest is MockAVSDeployer {
 
     function testRegisterOperatorToAVS() public {
         address operator = address(0x1);
-        ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature;
+        ISignatureUtilsMixinTypes.SignatureWithSaltAndExpiry memory operatorSignature;
 
         // test onlyRegistryCoordinator
         vm.expectRevert("ServiceManagerBase.onlyRegistryCoordinator: caller is not the registry coordinator");

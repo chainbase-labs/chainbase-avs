@@ -46,12 +46,20 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
     constructor(
         IAVSDirectory _avsDirectory, // AVSDirectory address
         IRewardsCoordinator _rewardsCoordinator, // RewardsCoordinator address
-        IRegistryCoordinator _registryCoordinator, // RegistryCoordinator address
+        ISlashingRegistryCoordinator _registryCoordinator, // RegistryCoordinator address
         IStakeRegistry _stakeRegistry, // StakeRegistry address
+        IPermissionController _permissionController, // PermissionController address
         IAllocationManager _allocationManager // AllocationManager address
     )
         BLSSignatureChecker(_registryCoordinator)
-        ServiceManagerBase(_avsDirectory, _rewardsCoordinator, _registryCoordinator, _stakeRegistry, _allocationManager)
+        ServiceManagerBase(
+            _avsDirectory,
+            _rewardsCoordinator,
+            _registryCoordinator,
+            _stakeRegistry,
+            _permissionController,
+            _allocationManager
+        )
     {}
 
     //=========================================================================
@@ -63,14 +71,11 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
      * @param _aggregator Address of the aggregator
      * @param _generator Address of the generator
      */
-    function initialize(
-        address initialOwner,
-        address _rewardsInitiator,
-        address _slasher,
-        address _aggregator,
-        address _generator
-    ) public initializer {
-        __ServiceManagerBase_init(initialOwner, _rewardsInitiator, _slasher);
+    function initialize(address initialOwner, address _rewardsInitiator, address _aggregator, address _generator)
+        public
+        initializer
+    {
+        __ServiceManagerBase_init(initialOwner, _rewardsInitiator);
         aggregator = _aggregator;
         generator = _generator;
     }
@@ -132,7 +137,7 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
      */
     function registerOperatorToAVS(
         address operator,
-        ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature
+        ISignatureUtilsMixinTypes.SignatureWithSaltAndExpiry memory operatorSignature
     ) public override onlyWhitelisted(operator) {
         super.registerOperatorToAVS(operator, operatorSignature);
     }
