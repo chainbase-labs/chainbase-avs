@@ -6,7 +6,7 @@ import "forge-std/Script.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "../src/ChainbaseServiceManager.sol";
-import {EigenHoleSkyDeployments} from "./EigenDeployments.s.sol";
+import {EigenMainnetDeployments} from "./EigenDeployments.s.sol";
 
 contract ChainbaseServiceManagerUpgrade is Script {
     struct DeploymentAddresses {
@@ -47,12 +47,12 @@ contract ChainbaseServiceManagerUpgrade is Script {
 
     function createNewImplementation(DeploymentAddresses memory addresses) internal returns (ChainbaseServiceManager) {
         return new ChainbaseServiceManager(
-            IAVSDirectory(EigenHoleSkyDeployments.AVSDirectory),
-            IRewardsCoordinator(EigenHoleSkyDeployments.RewardsCoordinator),
+            IAVSDirectory(EigenMainnetDeployments.AVSDirectory),
+            IRewardsCoordinator(EigenMainnetDeployments.RewardsCoordinator),
             ISlashingRegistryCoordinator(addresses.registryCoordinatorProxy),
             IStakeRegistry(addresses.stakeRegistryProxy),
-            IPermissionController(EigenHoleSkyDeployments.PermissionController),
-            IAllocationManager(EigenHoleSkyDeployments.AllocationManager)
+            IPermissionController(EigenMainnetDeployments.PermissionController),
+            IAllocationManager(EigenMainnetDeployments.AllocationManager)
         );
     }
 
