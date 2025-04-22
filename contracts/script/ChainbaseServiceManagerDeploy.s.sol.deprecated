@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.27;
 
 import "forge-std/Script.sol";
 
@@ -22,7 +22,7 @@ contract ChainbaseServiceManagerDeploy is Script {
     IStrategy[] public deployedStrategyArray;
 
     ProxyAdmin public proxyAdmin;
-    PauserRegistry public pauserRegistry;
+    IPauserRegistry public pauserRegistry;
     OperatorStateRetriever public operatorStateRetriever;
 
     IRegistryCoordinator public registryCoordinatorProxy;
@@ -37,8 +37,8 @@ contract ChainbaseServiceManagerDeploy is Script {
     IStakeRegistry public stakeRegistryProxy;
     IStakeRegistry public stakeRegistryImplementation;
 
-    IChainbaseServiceManager public chainbaseServiceManagerProxy;
-    IChainbaseServiceManager public chainbaseServiceManagerImplementation;
+    IServiceManager public chainbaseServiceManagerProxy;
+    IServiceManager public chainbaseServiceManagerImplementation;
 
     //forge script --chain holesky script/ChainbaseServiceManagerDeploy.s.sol --rpc-url $HOLESKY_RPC_URL --broadcast --verify -vvvv
     //forge script --chain mainnet script/ChainbaseServiceManagerDeploy.s.sol --rpc-url $MAINNET_RPC_URL --broadcast --verify -vvvv
@@ -53,6 +53,8 @@ contract ChainbaseServiceManagerDeploy is Script {
 
         address delegationManager = EigenMainnetDeployments.DelegationManager;
         address avsDirectory = EigenMainnetDeployments.AVSDirectory;
+        address rewardsCoordinator = EigenMainnetDeployments.RewardsCoordinator;
+        address allocationManager = EigenMainnetDeployments.AllocationManager;
 
         deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.cbETHStrategy));
         deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.stETHStrategy));
@@ -68,14 +70,22 @@ contract ChainbaseServiceManagerDeploy is Script {
         deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.mETHSTrategy));
         deployedStrategyArray.push(IStrategy(EigenMainnetDeployments.beaconETHStrategy));
 
-        _deployChainbaseServiceManagerContracts(IDelegationManager(delegationManager), IAVSDirectory(avsDirectory));
+        _deployChainbaseServiceManagerContracts(
+            IDelegationManager(delegationManager),
+            IAVSDirectory(avsDirectory),
+            IRewardsCoordinator(rewardsCoordinator),
+            IAllocationManager(allocationManager)
+        );
 
         vm.stopBroadcast();
     }
 
-    function _deployChainbaseServiceManagerContracts(IDelegationManager delegationManager, IAVSDirectory avsDirectory)
-        internal
-    {
+    function _deployChainbaseServiceManagerContracts(
+        IDelegationManager delegationManager,
+        IAVSDirectory avsDirectory,
+        IRewardsCoordinator rewardsCoordinator,
+        IAllocationManager allocationManager
+    ) internal {
         uint256 numStrategies = deployedStrategyArray.length;
 
         // deploy proxy admin for ability to upgrade proxy contracts
@@ -131,7 +141,9 @@ contract ChainbaseServiceManagerDeploy is Script {
                 ITransparentUpgradeableProxy(payable(address(indexRegistryProxy))), address(indexRegistryImplementation)
             );
 
-            stakeRegistryImplementation = new StakeRegistry(registryCoordinatorProxy, delegationManager);
+            stakeRegistryImplementation = new StakeRegistry(
+                registryCoordinatorProxy, delegationManager, avsDirectory, chainbaseServiceManagerProxy
+            );
 
             proxyAdmin.upgrade(
                 ITransparentUpgradeableProxy(payable(address(stakeRegistryProxy))), address(stakeRegistryImplementation)
@@ -142,7 +154,9 @@ contract ChainbaseServiceManagerDeploy is Script {
             IServiceManager(address(chainbaseServiceManagerProxy)),
             IStakeRegistry(address(stakeRegistryProxy)),
             IBLSApkRegistry(address(blsApkRegistryProxy)),
-            IIndexRegistry(address(indexRegistryProxy))
+            IIndexRegistry(address(indexRegistryProxy)),
+            avsDirectory,
+            pauserRegistry
         );
 
         {
@@ -193,13 +207,21 @@ contract ChainbaseServiceManagerDeploy is Script {
             );
         }
 
-        chainbaseServiceManagerImplementation =
-            new ChainbaseServiceManager(avsDirectory, registryCoordinatorProxy, stakeRegistryProxy);
+        chainbaseServiceManagerImplementation = new ChainbaseServiceManager(
+            avsDirectory, rewardsCoordinator, registryCoordinatorProxy, stakeRegistryProxy, allocationManager
+        );
 
         proxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(payable(address(chainbaseServiceManagerProxy))),
             address(chainbaseServiceManagerImplementation),
-            abi.encodeWithSelector(ChainbaseServiceManager.initialize.selector, multiSigManager, aggregator, generator)
+            abi.encodeWithSelector(
+                ChainbaseServiceManager.initialize.selector,
+                multiSigManager,
+                multiSigManager,
+                EigenMainnetDeployments.Slasher,
+                aggregator,
+                generator
+            )
         );
 
         // WRITE JSON DATA

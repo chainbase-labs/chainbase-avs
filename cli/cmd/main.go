@@ -22,24 +22,6 @@ func main() {
 			Action:  actions.RegisterOperatorWithEigenlayer,
 		},
 		{
-			Name:    "deposit-into-strategy",
-			Aliases: []string{"d"},
-			Usage:   "deposit tokens into a strategy",
-			Action:  actions.DepositIntoStrategy,
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:     "strategy-addr",
-					Usage:    "Address of Strategy contract to deposit into",
-					Required: true,
-				},
-				cli.StringFlag{
-					Name:     "amount",
-					Usage:    "amount of tokens to deposit into strategy",
-					Required: true,
-				},
-			},
-		},
-		{
 			Name:    "register-operator-with-avs",
 			Aliases: []string{"r"},
 			Usage:   "registers bls keys with pubkey-compendium, opts into slashing by avs service-manager, and registers operators with avs registry",
@@ -68,6 +50,31 @@ func main() {
 			Aliases: []string{"t"},
 			Usage:   "send a test task to manuscript node",
 			Action:  actions.TestManuscriptNodeTask,
+		},
+		{
+			Name:    "stake-into-staking",
+			Aliases: []string{"ss"},
+			Usage:   "stake C tokens into staking contract",
+			Action:  actions.StakeIntoStaking,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:     "amount",
+					Usage:    "amount of C tokens to stake into staking contract",
+					Required: true,
+				},
+			},
+		},
+		{
+			Name:    "unstake-from-staking",
+			Aliases: []string{"us"},
+			Usage:   "unstake C tokens from staking contract",
+			Action:  actions.UnstakeFromStaking,
+		},
+		{
+			Name:    "withdraw-from-staking",
+			Aliases: []string{"ws"},
+			Usage:   "withdraw C tokens from staking contract",
+			Action:  actions.WithdrawFromStaking,
 		},
 	}
 

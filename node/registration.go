@@ -6,60 +6,22 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/big"
 
-	"github.com/Layr-Labs/eigensdk-go/chainio/clients/avsregistry"
 	"github.com/Layr-Labs/eigensdk-go/chainio/utils"
-
 	eigenSdkTypes "github.com/Layr-Labs/eigensdk-go/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 func (n *ManuscriptNode) RegisterOperatorWithEigenlayer() error {
 	op := eigenSdkTypes.Operator{
-		Address:                 n.operatorAddr.String(),
-		EarningsReceiverAddress: n.operatorAddr.String(),
+		Address: n.operatorAddr.String(),
 	}
-	_, err := n.eigenlayerWriter.RegisterAsOperator(context.Background(), op)
+	_, err := n.eigenlayerWriter.RegisterAsOperator(context.Background(), op, true)
 	if err != nil {
 		n.logger.Error("Error registering operator with eigenlayer", "err", err)
 		return err
 	}
 	n.logger.Infof("Registered operator with eigenlayer")
-
-	return nil
-}
-
-func (n *ManuscriptNode) DepositIntoStrategy(strategyAddr common.Address, amount *big.Int) error {
-	_, tokenAddr, err := n.eigenlayerReader.GetStrategyAndUnderlyingToken(&bind.CallOpts{}, strategyAddr)
-	if err != nil {
-		n.logger.Error("Failed to fetch strategy contract", "err", err)
-		return err
-	}
-	contractErc20Mock, err := n.avsReader.GetErc20Mock(context.Background(), tokenAddr)
-	if err != nil {
-		n.logger.Error("Failed to fetch ERC20Mock contract", "err", err)
-		return err
-	}
-	txOpts, err := n.avsWriter.TxMgr.GetNoSendTxOpts()
-	tx, err := contractErc20Mock.Mint(txOpts, n.operatorAddr, amount)
-	if err != nil {
-		n.logger.Errorf("Error assembling Mint tx")
-		return err
-	}
-	_, err = n.avsWriter.TxMgr.Send(context.Background(), tx)
-	if err != nil {
-		n.logger.Errorf("Error submitting Mint tx")
-		return err
-	}
-
-	_, err = n.eigenlayerWriter.DepositERC20IntoStrategy(context.Background(), strategyAddr, amount)
-	if err != nil {
-		n.logger.Error("Error depositing into strategy", "err", err)
-		return err
-	}
-	n.logger.Infof("Deposited %s into strategy %s", amount, strategyAddr)
 
 	return nil
 }
@@ -77,6 +39,7 @@ func (n *ManuscriptNode) RegisterOperatorWithAvs(
 		n.blsKeypair,
 		quorumNumbers,
 		socket,
+		true,
 	)
 	if err != nil {
 		n.logger.Errorf("Unable to register operator with avs registry coordinator")
@@ -125,10 +88,11 @@ func (n *ManuscriptNode) PrintOperatorStatus() error {
 
 // UpdateOperatorSocket update operator socket
 func (n *ManuscriptNode) UpdateOperatorSocket() error {
-	avsRegistryChainWriter := n.avsWriter.AvsRegistryWriter.(*avsregistry.AvsRegistryChainWriter)
+	avsRegistryChainWriter := n.avsWriter.ChainWriter
 	_, err := avsRegistryChainWriter.UpdateSocket(
 		context.Background(),
 		eigenSdkTypes.Socket(n.nodeSocket),
+		true,
 	)
 	if err != nil {
 		n.logger.Errorf("Unable to update operator socket")
@@ -148,6 +112,7 @@ func (n *ManuscriptNode) DeregisterOperatorWithAvs() error {
 		context.Background(),
 		quorumNumbers,
 		pubkey,
+		true,
 	)
 	if err != nil {
 		n.logger.Errorf("Unable to deregister operator with avs registry coordinator")

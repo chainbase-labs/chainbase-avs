@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity = 0.8.24;
+pragma solidity = 0.8.27;
 
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
 import "@eigenlayer-middleware/src/BLSSignatureChecker.sol";
@@ -45,11 +45,21 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
      */
     constructor(
         IAVSDirectory _avsDirectory, // AVSDirectory address
-        IRegistryCoordinator _registryCoordinator, // RegistryCoordinator address
-        IStakeRegistry _stakeRegistry // StakeRegistry address
+        IRewardsCoordinator _rewardsCoordinator, // RewardsCoordinator address
+        ISlashingRegistryCoordinator _registryCoordinator, // RegistryCoordinator address
+        IStakeRegistry _stakeRegistry, // StakeRegistry address
+        IPermissionController _permissionController, // PermissionController address
+        IAllocationManager _allocationManager // AllocationManager address
     )
         BLSSignatureChecker(_registryCoordinator)
-        ServiceManagerBase(_avsDirectory, _registryCoordinator, _stakeRegistry)
+        ServiceManagerBase(
+            _avsDirectory,
+            _rewardsCoordinator,
+            _registryCoordinator,
+            _stakeRegistry,
+            _permissionController,
+            _allocationManager
+        )
     {}
 
     //=========================================================================
@@ -61,8 +71,11 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
      * @param _aggregator Address of the aggregator
      * @param _generator Address of the generator
      */
-    function initialize(address initialOwner, address _aggregator, address _generator) public initializer {
-        __ServiceManagerBase_init(initialOwner);
+    function initialize(address initialOwner, address _rewardsInitiator, address _aggregator, address _generator)
+        public
+        initializer
+    {
+        __ServiceManagerBase_init(initialOwner, _rewardsInitiator);
         aggregator = _aggregator;
         generator = _generator;
     }
@@ -124,7 +137,7 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
      */
     function registerOperatorToAVS(
         address operator,
-        ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature
+        ISignatureUtilsMixinTypes.SignatureWithSaltAndExpiry memory operatorSignature
     ) public override onlyWhitelisted(operator) {
         super.registerOperatorToAVS(operator, operatorSignature);
     }
@@ -199,7 +212,7 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
             // signed stake > total stake
             require(
                 quorumStakeTotals.signedStakeForQuorum[i] * _THRESHOLD_DENOMINATOR
-                     >= quorumStakeTotals.totalStakeForQuorum[i] * quorumThresholdPercentage,
+                    >= quorumStakeTotals.totalStakeForQuorum[i] * quorumThresholdPercentage,
                 "ChainbaseServiceManager: signatories do not own at least threshold percentage of a quorum"
             );
         }
@@ -218,5 +231,10 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
      */
     function taskNumber() external view override returns (uint32) {
         return latestTaskNum;
+    }
+
+    /// @notice Returns the EigenLayer allocationManager contract.
+    function allocationManager() external view returns (address) {
+        return address(_allocationManager);
     }
 }

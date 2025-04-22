@@ -22,6 +22,9 @@ type NodeConfig struct {
 	PostgresDatabase               string `yaml:"postgres_database"`
 	JobManagerHost                 string `yaml:"job_manager_host"`
 	JobManagerPort                 string `yaml:"job_manager_port"`
+	ChainbaseRpcUrl                string `yaml:"chainbase_rpc_url"`
+	CContractAddress               string `yaml:"c_contract_address"`
+	StakingContractAddress         string `yaml:"staking_contract_address"`
 }
 
 type TaskIndex = uint32

@@ -6,9 +6,9 @@ import (
 	"os"
 
 	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
-	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/urfave/cli"
 
+	"github.com/chainbase-labs/chainbase-avs/core"
 	"github.com/chainbase-labs/chainbase-avs/core/config"
 	"github.com/chainbase-labs/chainbase-avs/node"
 	"github.com/chainbase-labs/chainbase-avs/node/types"
@@ -17,7 +17,7 @@ import (
 func RegisterOperatorWithAvs(ctx *cli.Context) error {
 	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
 	nodeConfig := types.NodeConfig{}
-	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
+	err := core.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {
 		return err
 	}

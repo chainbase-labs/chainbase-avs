@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -33,7 +32,9 @@ import (
 	dockerClient "github.com/docker/docker/client"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	coordinatorpb "github.com/chainbase-labs/chainbase-avs/api/grpc/coordinator"
@@ -52,14 +53,14 @@ type ManuscriptNode struct {
 	nodepb.UnimplementedManuscriptNodeServiceServer
 	config           types.NodeConfig
 	logger           logging.Logger
-	ethClient        eth.Client
+	ethClient        chainio.EthClientInterface
 	metricsReg       *prometheus.Registry
 	metrics          metrics.Metrics
 	nodeApi          *nodeapi.NodeApi
 	avsWriter        *chainio.AvsWriter
-	avsReader        chainio.IAvsReader
-	eigenlayerReader sdkelcontracts.ELReader
-	eigenlayerWriter sdkelcontracts.ELWriter
+	avsReader        *chainio.AvsReader
+	eigenlayerReader sdkelcontracts.ChainReader
+	eigenlayerWriter sdkelcontracts.ChainWriter
 	blsKeypair       *bls.KeyPair
 	operatorId       sdktypes.OperatorId
 	operatorAddr     common.Address
@@ -86,6 +87,9 @@ type ManuscriptNode struct {
 	jobManagerHost string
 	// job manager port
 	jobManagerPort string
+	// send transactions to chainbase network
+	chainbaseClient chainio.EthClientInterface
+	chainbaseTxMgr  txmgr.TxManager
 }
 
 func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, error) {
@@ -106,7 +110,7 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 	// Setup Node Api
 	nodeApi := nodeapi.NewNodeApi(AvsName, SemVer, c.NodeApiIpPortAddress, logger)
 
-	var ethRpcClient eth.Client
+	var ethRpcClient chainio.EthClientInterface
 	if c.EnableMetrics {
 		rpcCallsCollector := rpccalls.NewCollector(AvsName, reg)
 		ethRpcClient, err = eth.NewInstrumentedClient(c.EthRpcUrl, rpcCallsCollector)
@@ -115,7 +119,7 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 			return nil, err
 		}
 	} else {
-		ethRpcClient, err = eth.NewClient(c.EthRpcUrl)
+		ethRpcClient, err = ethclient.Dial(c.EthRpcUrl)
 		if err != nil {
 			logger.Error("Cannot create http eth client", "err", err)
 			return nil, err
@@ -231,6 +235,32 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 	dataSource := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		c.PostgresHost, c.PostgresPort, c.PostgresUser, c.PostgresPassword, c.PostgresDatabase)
 
+	chainbaseClient, err := ethclient.Dial(c.ChainbaseRpcUrl)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create chainbase client")
+	}
+
+	chainbaseChainId, err := chainbaseClient.ChainID(context.Background())
+	if err != nil {
+		logger.Error("Cannot get chainId", "err", err)
+		return nil, err
+	}
+
+	chainbaseSignerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
+		KeystorePath: c.EcdsaPrivateKeyStorePath,
+		Password:     ecdsaKeyPassword,
+	}, chainbaseChainId)
+	if err != nil {
+		panic(err)
+	}
+
+	chainbaseSkWallet, err := wallet.NewPrivateKeyWallet(chainbaseClient, chainbaseSignerV2, common.HexToAddress(operatorAddress), logger)
+	if err != nil {
+		panic(err)
+	}
+
+	chainbaseTxMgr := txmgr.NewSimpleTxManager(chainbaseSkWallet, chainbaseClient, logger, common.HexToAddress(operatorAddress))
+
 	msNode := &ManuscriptNode{
 		config:                      c,
 		logger:                      logger,
@@ -240,8 +270,8 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 		ethClient:                   ethRpcClient,
 		avsWriter:                   avsWriter,
 		avsReader:                   avsReader,
-		eigenlayerReader:            sdkClients.ElChainReader,
-		eigenlayerWriter:            sdkClients.ElChainWriter,
+		eigenlayerReader:            *sdkClients.ElChainReader,
+		eigenlayerWriter:            *sdkClients.ElChainWriter,
 		blsKeypair:                  blsKeyPair,
 		operatorAddr:                common.HexToAddress(operatorAddress),
 		coordinatorServerIpPortAddr: c.CoordinatorServerIpPortAddress,
@@ -255,6 +285,8 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 		dockerClient:                cli,
 		jobManagerHost:              c.JobManagerHost,
 		jobManagerPort:              c.JobManagerPort,
+		chainbaseClient:             chainbaseClient,
+		chainbaseTxMgr:              chainbaseTxMgr,
 	}
 
 	if !cliCommand {

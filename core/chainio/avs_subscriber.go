@@ -1,11 +1,11 @@
 package chainio
 
 import (
-	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/chainbase-labs/chainbase-avs/contracts/bindings"
@@ -33,7 +33,7 @@ func BuildAvsSubscriberFromConfig(config *config.Config) (*AvsSubscriber, error)
 	)
 }
 
-func BuildAvsSubscriber(registryCoordinatorAddr, blsOperatorStateRetrieverAddr gethcommon.Address, ethClient eth.Client, logger sdklogging.Logger) (*AvsSubscriber, error) {
+func BuildAvsSubscriber(registryCoordinatorAddr, blsOperatorStateRetrieverAddr gethcommon.Address, ethClient *ethclient.Client, logger sdklogging.Logger) (*AvsSubscriber, error) {
 	avsContractBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, blsOperatorStateRetrieverAddr, ethClient, logger)
 	if err != nil {
 		logger.Error("Failed to create contract bindings", "err", err)

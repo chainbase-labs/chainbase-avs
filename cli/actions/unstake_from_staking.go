@@ -12,7 +12,7 @@ import (
 	"github.com/chainbase-labs/chainbase-avs/node/types"
 )
 
-func DeregisterOperatorWithAvs(ctx *cli.Context) error {
+func UnstakeFromStaking(ctx *cli.Context) error {
 	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
 	nodeConfig := types.NodeConfig{}
 	err := core.ReadYamlConfig(configPath, &nodeConfig)
@@ -31,8 +31,9 @@ func DeregisterOperatorWithAvs(ctx *cli.Context) error {
 		return err
 	}
 
-	err = manuscriptNode.DeregisterOperatorWithAvs()
+	err = manuscriptNode.UnstakeFromStaking()
 	if err != nil {
+		log.Fatalf("Failed to unstake c token from staking contract %v", err.Error())
 		return err
 	}
 

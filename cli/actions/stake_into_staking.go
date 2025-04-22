@@ -3,6 +3,7 @@ package actions
 import (
 	"encoding/json"
 	"log"
+	"math/big"
 
 	"github.com/urfave/cli"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/chainbase-labs/chainbase-avs/node/types"
 )
 
-func DeregisterOperatorWithAvs(ctx *cli.Context) error {
+func StakeIntoStaking(ctx *cli.Context) error {
 	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
 	nodeConfig := types.NodeConfig{}
 	err := core.ReadYamlConfig(configPath, &nodeConfig)
@@ -31,8 +32,16 @@ func DeregisterOperatorWithAvs(ctx *cli.Context) error {
 		return err
 	}
 
-	err = manuscriptNode.DeregisterOperatorWithAvs()
+	amountStr := ctx.String("amount")
+	amount, ok := new(big.Int).SetString(amountStr, 10)
+	if !ok {
+		log.Println("Failed converting amount to big.Int")
+		return err
+	}
+
+	err = manuscriptNode.StakeIntoStaking(amount)
 	if err != nil {
+		log.Fatalf("Failed to stake c token into staking contract %v", err.Error())
 		return err
 	}
 

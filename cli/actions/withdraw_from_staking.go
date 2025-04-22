@@ -2,23 +2,20 @@ package actions
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
-	"math/big"
 
-	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli"
 
+	"github.com/chainbase-labs/chainbase-avs/core"
 	"github.com/chainbase-labs/chainbase-avs/core/config"
 	"github.com/chainbase-labs/chainbase-avs/node"
 	"github.com/chainbase-labs/chainbase-avs/node/types"
 )
 
-func DepositIntoStrategy(ctx *cli.Context) error {
+func WithdrawFromStaking(ctx *cli.Context) error {
 	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
 	nodeConfig := types.NodeConfig{}
-	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
+	err := core.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {
 		return err
 	}
@@ -34,17 +31,9 @@ func DepositIntoStrategy(ctx *cli.Context) error {
 		return err
 	}
 
-	strategyAddrStr := ctx.String("strategy-addr")
-	strategyAddr := common.HexToAddress(strategyAddrStr)
-	amountStr := ctx.String("amount")
-	amount, ok := new(big.Int).SetString(amountStr, 10)
-	if !ok {
-		fmt.Println("Error converting amount to big.Int")
-		return err
-	}
-
-	err = manuscriptNode.DepositIntoStrategy(strategyAddr, amount)
+	err = manuscriptNode.WithdrawFromStaking()
 	if err != nil {
+		log.Fatalf("Failed to withdraw c token from staking contract %v", err.Error())
 		return err
 	}
 

@@ -8,6 +8,9 @@ library EigenMainnetDeployments {
     address internal constant StrategyManager = 0x858646372CC42E1A627fcE94aa7A7033e7CF075A;
     address internal constant Slasher = 0xD92145c07f8Ed1D392c1B88017934E301CC1c3Cd;
     address internal constant AVSDirectory = 0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF;
+    address internal constant RewardsCoordinator = 0x7750d328b314EfFa365A0402CcfD489B80B0adda;
+    address internal constant AllocationManager = 0x948a420b8CC1d6BFd0B6087C2E7c344a2CD0bc39;
+    address internal constant PermissionController = 0x25E5F8B1E7aDf44518d35D5B2271f114e081f0E5;
 
     // strategies
     address internal constant cbETHStrategy = 0x54945180dB7943c0ed0FEE7EdaB2Bd24620256bc;
@@ -33,6 +36,9 @@ library EigenHoleSkyDeployments {
     address internal constant StrategyManager = 0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6;
     address internal constant Slasher = 0xcAe751b75833ef09627549868A04E32679386e7C;
     address internal constant AVSDirectory = 0x055733000064333CaDDbC92763c58BF0192fFeBf;
+    address internal constant RewardsCoordinator = 0xAcc1fb458a1317E886dB376Fc8141540537E68fE;
+    address internal constant AllocationManager = 0x78469728304326CBc65f8f95FA756B0B73164462;
+    address internal constant PermissionController = 0x598cb226B591155F767dA17AfE7A2241a68C5C10;
 
     // strategies
     address internal constant cbETHStrategy = 0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6;
