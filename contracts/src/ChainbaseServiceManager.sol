@@ -232,4 +232,9 @@ contract ChainbaseServiceManager is BLSSignatureChecker, ServiceManagerBase, Cha
     function taskNumber() external view override returns (uint32) {
         return latestTaskNum;
     }
+
+    /// @notice Returns the EigenLayer allocationManager contract.
+    function allocationManager() external view returns (address) {
+        return address(_allocationManager);
+    }
 }
