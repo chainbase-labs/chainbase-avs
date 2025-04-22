@@ -19,7 +19,7 @@ require (
 )
 
 require (
-	github.com/Layr-Labs/eigensdk-go v0.1.14-0.20241224031921-2e5ef1f87176 // indirect
+	github.com/Layr-Labs/eigensdk-go v0.2.0-beta
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.26.1 // indirect
