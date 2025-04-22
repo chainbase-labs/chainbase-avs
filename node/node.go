@@ -21,7 +21,6 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/logging"
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 	sdkmetrics "github.com/Layr-Labs/eigensdk-go/metrics"
-	"github.com/Layr-Labs/eigensdk-go/metrics/collectors/economic"
 	rpccalls "github.com/Layr-Labs/eigensdk-go/metrics/collectors/rpc_calls"
 	"github.com/Layr-Labs/eigensdk-go/nodeapi"
 	"github.com/Layr-Labs/eigensdk-go/signerv2"
@@ -212,13 +211,13 @@ func NewNodeFromConfig(c types.NodeConfig, cliCommand bool) (*ManuscriptNode, er
 	}
 	// We must register the economic metrics separately because they are exported metrics (from jsonrpc or subgraph calls)
 	// and not instrumented metrics: see https://prometheus.io/docs/instrumenting/writing_clientlibs/#overall-structure
-	quorumNames := map[sdktypes.QuorumNum]string{
-		0: "quorum0",
-	}
-	economicMetricsCollector := economic.NewCollector(
-		sdkClients.ElChainReader, sdkClients.AvsRegistryChainReader,
-		AvsName, logger, common.HexToAddress(operatorAddress), quorumNames)
-	reg.MustRegister(economicMetricsCollector)
+	//quorumNames := map[sdktypes.QuorumNum]string{
+	//	0: "quorum0",
+	//}
+	//economicMetricsCollector := economic.NewCollector(
+	//	sdkClients.ElChainReader, sdkClients.AvsRegistryChainReader,
+	//	AvsName, logger, common.HexToAddress(operatorAddress), quorumNames)
+	//reg.MustRegister(economicMetricsCollector)
 
 	coordinatorRpcClient, err := NewCoordinatorRpcClient(c.CoordinatorServerIpPortAddress, logger, avsAndEigenMetrics)
 	if err != nil {
