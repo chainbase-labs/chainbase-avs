@@ -435,7 +435,7 @@ func (n *ManuscriptNode) ProcessNewTaskCreatedLog(newTaskCreatedLog *bindings.Ch
 func (n *ManuscriptNode) ExecuteTask(taskIndex uint32, taskDetails *core.TaskDetails) error {
 	n.logger.Info("Executing task", "task index", taskIndex, "task details", taskDetails)
 
-	containerName := "chainbase_jobmanager"
+	containerName := n.jobManagerHost
 	cmd := []string{
 		"/bin/sh",
 		"-c",
@@ -580,7 +580,7 @@ func (n *ManuscriptNode) CancelTaskJob(taskIndex uint32) {
 	}
 	n.logger.Info("Task Job  is cancelling", "taskIndex", taskIndex, "JobID", jobID)
 
-	containerName := "chainbase_jobmanager"
+	containerName := n.jobManagerHost
 	cmd := []string{"flink", "cancel", jobID}
 	execConfig := dockerTypes.ExecConfig{
 		Cmd:          cmd,
